@@ -1,0 +1,42 @@
+name: inshorts_clone
+description: A simplified Inshorts-like news app using Flutter and NewsAPI
+publish_to: "none" # this prevents accidental publishing
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.18.0 <3.0.0" # supports null safety
+  flutter: ">=3.7.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.0.5
+
+  # Networking
+  http: ^1.1.0
+
+  # Image caching
+  cached_network_image: ^3.3.0
+
+  # Date formatting
+  intl: ^0.18.1
+
+  # Optional: share news
+  share_plus: ^7.2.0
+
+  # Optional: open URL in browser
+  url_launcher: ^6.1.14
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
+
+flutter:
+  uses-material-design: true
+
+  #assets:
+    # Add any local assets if needed in future
+   # - assets/images/
