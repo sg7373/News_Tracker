@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _timer; // 🔹 Timer for auto-refresh
 
   final List<Map<String, String>> categories = const [
-    {'name': 'General', 'code': 'general'},
+    {'name': 'Trending', 'code': 'trending'},
     {'name': 'Business', 'code': 'business'},
     {'name': 'Technology', 'code': 'technology'},
     {'name': 'Sports', 'code': 'sports'},

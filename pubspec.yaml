@@ -29,7 +29,10 @@ dependencies:
   # Optional: open URL in browser
   url_launcher: ^6.1.14
 
-  # 🔥 Firebase
+  # 🔖 Bookmark storage (LOCAL STORAGE)
+  shared_preferences: ^2.2.2
+
+  # 🔥 Firebase (optional - keep if needed later)
   firebase_core: ^2.30.0
   firebase_auth: ^4.17.0
 
