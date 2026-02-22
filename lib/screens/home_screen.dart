@@ -21,69 +21,113 @@ class HomeScreen extends StatelessWidget {
     final newsProvider = Provider.of<NewsProvider>(context);
 
     return Scaffold(
+      backgroundColor: Colors.grey[200],
+
+      /// 🔥 MODERN APP BAR
       appBar: AppBar(
-        title: const Text('Inshorts Clone'),
+        title: const Text(
+          'Inshorts Clone',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
       ),
-      body: RefreshIndicator(
-        onRefresh: () => newsProvider.fetchNews(category: newsProvider.currentCategory),
-        child: Stack(
-          children: [
-            if (!newsProvider.isLoading && newsProvider.error == null)
-              PageView.builder(
-                scrollDirection: Axis.vertical,
-                itemCount: newsProvider.articles.length,
-                itemBuilder: (context, index) {
-                  final article = newsProvider.articles[index];
-                  return NewsCard(article: article);
-                },
-              )
-            else if (newsProvider.isLoading)
-              const Center(child: CircularProgressIndicator())
-            else if (newsProvider.error != null)
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Error: ${newsProvider.error}'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => newsProvider.fetchNews(category: newsProvider.currentCategory),
-                      child: const Text('Retry'),
+
+      body: Column(
+        children: [
+
+          /// 🔹 CATEGORY BAR (TOP LIKE INSHORTS)
+          Container(
+            height: 50,
+            color: Colors.white,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              itemBuilder: (context, index) {
+                final cat = categories[index];
+                final isSelected =
+                    newsProvider.currentCategory == cat['code'];
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: ChoiceChip(
+                    label: Text(cat['name']!),
+                    selected: isSelected,
+                    selectedColor: Colors.red.shade100,
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.red : Colors.black,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
-                  ],
-                ),
-              )
-            else
-              const Center(child: Text('No news available')),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: SizedBox(
-          height: 60,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final cat = categories[index];
-              final isSelected = newsProvider.currentCategory == cat['code'];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: ChoiceChip(
-                  label: Text(cat['name']!),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      newsProvider.changeCategory(cat['code']!);
-                    }
-                  },
-                ),
-              );
-            },
+                    onSelected: (selected) {
+                      if (selected) {
+                        newsProvider.changeCategory(cat['code']!);
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
           ),
-        ),
+
+          /// 🔹 NEWS CONTENT
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => newsProvider.fetchNews(
+                category: newsProvider.currentCategory,
+              ),
+              child: Builder(
+                builder: (_) {
+                  if (newsProvider.isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  if (newsProvider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error: ${newsProvider.error}',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => newsProvider.fetchNews(
+                              category: newsProvider.currentCategory,
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (newsProvider.articles.isEmpty) {
+                    return const Center(
+                      child: Text('No news available'),
+                    );
+                  }
+
+                  /// 🔥 VERTICAL SWIPE LIKE REAL INSHORTS
+                  return PageView.builder(
+                    scrollDirection: Axis.vertical,
+                    itemCount: newsProvider.articles.length,
+                    itemBuilder: (context, index) {
+                      final article = newsProvider.articles[index];
+                      return NewsCard(article: article);
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

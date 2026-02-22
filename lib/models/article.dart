@@ -25,4 +25,15 @@ class Article {
       url: json['url'] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'description': description,
+      'urlToImage': urlToImage,
+      'source': {'name': sourceName},
+      'publishedAt': publishedAt.toIso8601String(),
+      'url': url,
+    };
+  }
 }

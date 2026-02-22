@@ -9,10 +9,8 @@ class NewsService {
 
   Future<List<Article>> fetchTopHeadlines({String category = 'general'}) async {
     final url = Uri.parse('$_baseUrl?country=$_country&category=$category&apiKey=$newsApiKey');
-
     try {
       final response = await http.get(url).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> articlesJson = data['articles'] ?? [];
@@ -21,7 +19,6 @@ class NewsService {
         throw Exception('Failed to load news: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching news: $e');
       throw Exception('Failed to fetch news: $e');
     }
   }

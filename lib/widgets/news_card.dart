@@ -9,108 +9,150 @@ class NewsCard extends StatelessWidget {
   final Article article;
   final bool isActive;
 
-  const NewsCard({super.key, required this.article, this.isActive = false});
+  const NewsCard({
+    super.key,
+    required this.article,
+    this.isActive = false,
+  });
+
+  Future<void> _launchURL(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (article.urlToImage != null && article.urlToImage!.isNotEmpty)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: CachedNetworkImage(
-                imageUrl: article.urlToImage!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 200,
-                  color: Colors.grey[300],
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 200,
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.broken_image, size: 50),
-                ),
+    // 🔥 Calculates height so roughly 3 cards fit per screen height
+    double cardHeight = MediaQuery.of(context).size.height * 0.30; 
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 750, // 🔥 Keeps card centered and proportional on large screens
+        ),
+        child: Container(
+          height: cardHeight, // 🔥 Fixed height for the Inshorts "grid/list" look
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+            // Boundary line to define the "White Box"
+            border: Border.all(color: Colors.grey.shade200, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-            )
-          else
-            Container(
-              height: 200,
-              color: Colors.grey[300],
-              child: const Center(child: Icon(Icons.image, size: 50)),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  article.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                /// 🔹 LEFT IMAGE (Fixed Aspect Ratio)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: article.urlToImage != null && article.urlToImage!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: article.urlToImage!,
+                          width: 110, 
+                          height: double.infinity, // Fills the fixed card height
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            width: 110,
+                            color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: 110,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, size: 25),
+                          ),
+                        )
+                      : Container(
+                          width: 110,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image, size: 25),
+                        ),
                 ),
-                const SizedBox(height: 8),
-                if (article.description != null && article.description!.isNotEmpty)
-                  Text(
-                    article.description!,
-                    style: const TextStyle(fontSize: 14),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        article.sourceName,
-                        style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+
+                const SizedBox(width: 12),
+
+                /// 🔹 RIGHT CONTENT
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        article.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    Text(
-                      DateFormat('MMM d, h:mm a').format(article.publishedAt),
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.share),
-                      onPressed: () {
-                        Share.share('Check this news: ${article.title} - ${article.url}');
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.bookmark_border),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Bookmark clicked (demo)')),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.open_in_browser),
-                      onPressed: () async {
-                        final url = Uri.parse(article.url);
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(url);
-                        }
-                      },
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        "short by ${article.sourceName} / ${DateFormat('MMM d, h:mm a').format(article.publishedAt)}",
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // 🔥 Expanded content to fill the middle of the white box
+                      Expanded(
+                        child: Text(
+                          article.description ?? "",
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black87,
+                            height: 1.4, // Better readability
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      /// 🔹 FOOTER ACTIONS
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              InkWell(
+                                onTap: () => Share.share('${article.title}\n${article.url}'),
+                                child: const Icon(Icons.share, size: 18, color: Colors.blueGrey),
+                              ),
+                              const SizedBox(width: 20),
+                              InkWell(
+                                onTap: () => _launchURL(article.url),
+                                child: const Icon(Icons.open_in_browser, size: 18, color: Colors.blueGrey),
+                              ),
+                            ],
+                          ),
+                          const Text(
+                            "read more",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blueAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
