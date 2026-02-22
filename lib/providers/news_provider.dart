@@ -15,6 +15,7 @@ class NewsProvider with ChangeNotifier {
 
   final NewsService _newsService = NewsService();
 
+  // Fetch news by category
   Future<void> fetchNews({required String category}) async {
     _isLoading = true;
     _error = null;
@@ -33,9 +34,29 @@ class NewsProvider with ChangeNotifier {
     }
   }
 
+  // Change category
   void changeCategory(String category) {
     if (category != _currentCategory) {
       fetchNews(category: category);
+    }
+  }
+
+  // Search news by query
+  Future<void> searchNews(String query) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final result = await _newsService.searchNews(query: query);
+      _articles = result;
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      _articles = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

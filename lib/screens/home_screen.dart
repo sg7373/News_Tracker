@@ -1,10 +1,22 @@
+import 'dart:async'; // 🔹 Needed for Timer
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/news_provider.dart';
 import '../widgets/news_card.dart';
+import 'live_score.dart';
+import 'search_screen.dart';
+import 'profile_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+  Timer? _timer; // 🔹 Timer for auto-refresh
 
   final List<Map<String, String>> categories = const [
     {'name': 'General', 'code': 'general'},
@@ -16,14 +28,134 @@ class HomeScreen extends StatelessWidget {
     {'name': 'Science', 'code': 'science'},
   ];
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final newsProvider = Provider.of<NewsProvider>(context, listen: false);
+
+    // 🔹 Fetch news immediately on screen load
+    newsProvider.fetchNews(category: newsProvider.currentCategory);
+
+    // 🔹 Auto-refresh news every 5 minutes (you can change interval)
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      newsProvider.fetchNews(category: newsProvider.currentCategory);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // 🔹 Cancel the timer when screen closes
+    super.dispose();
+  }
+
+  Widget _newsFeed(NewsProvider newsProvider) {
+    return Column(
+      children: [
+        /// 🔹 CATEGORY BAR
+        Container(
+          height: 50,
+          color: Colors.white,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemBuilder: (context, index) {
+              final cat = categories[index];
+              final isSelected = newsProvider.currentCategory == cat['code'];
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ChoiceChip(
+                  label: Text(cat['name']!),
+                  selected: isSelected,
+                  selectedColor: Colors.red.shade100,
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.red : Colors.black,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  onSelected: (selected) {
+                    if (selected) {
+                      newsProvider.changeCategory(cat['code']!);
+                    }
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+
+        /// 🔹 NEWS CONTENT
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => newsProvider.fetchNews(
+              category: newsProvider.currentCategory,
+            ),
+            child: Builder(
+              builder: (_) {
+                if (newsProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (newsProvider.error != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Error: ${newsProvider.error}',
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => newsProvider.fetchNews(
+                              category: newsProvider.currentCategory),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (newsProvider.articles.isEmpty) {
+                  return const Center(child: Text('No news available'));
+                }
+
+                /// 🔥 VERTICAL PAGEVIEW LIKE INSHORTS
+                return PageView.builder(
+                  scrollDirection: Axis.vertical,
+                  itemCount: newsProvider.articles.length,
+                  itemBuilder: (context, index) {
+                    final article = newsProvider.articles[index];
+                    return NewsCard(article: article);
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final newsProvider = Provider.of<NewsProvider>(context);
 
+    /// 🔹 SCREENS FOR BOTTOM NAVIGATION
+    final List<Widget> screens = [
+      _newsFeed(newsProvider), // News Feed
+      const LiveScoreScreen(), // Live Score placeholder
+    ];
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
 
-      /// 🔥 MODERN APP BAR
+      /// 🔹 MODERN APP BAR
       appBar: AppBar(
         title: const Text(
           'Inshorts Clone',
@@ -33,100 +165,42 @@ class HomeScreen extends StatelessWidget {
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const SearchScreen()));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ProfileScreen()));
+            },
+          ),
+        ],
       ),
 
-      body: Column(
-        children: [
+      /// 🔹 BODY (SWITCHES BASED ON BOTTOM NAVIGATION)
+      body: screens[_selectedIndex],
 
-          /// 🔹 CATEGORY BAR (TOP LIKE INSHORTS)
-          Container(
-            height: 50,
-            color: Colors.white,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemBuilder: (context, index) {
-                final cat = categories[index];
-                final isSelected =
-                    newsProvider.currentCategory == cat['code'];
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(cat['name']!),
-                    selected: isSelected,
-                    selectedColor: Colors.red.shade100,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.red : Colors.black,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    onSelected: (selected) {
-                      if (selected) {
-                        newsProvider.changeCategory(cat['code']!);
-                      }
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-
-          /// 🔹 NEWS CONTENT
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => newsProvider.fetchNews(
-                category: newsProvider.currentCategory,
-              ),
-              child: Builder(
-                builder: (_) {
-                  if (newsProvider.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-
-                  if (newsProvider.error != null) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Error: ${newsProvider.error}',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () => newsProvider.fetchNews(
-                              category: newsProvider.currentCategory,
-                            ),
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (newsProvider.articles.isEmpty) {
-                    return const Center(
-                      child: Text('No news available'),
-                    );
-                  }
-
-                  /// 🔥 VERTICAL SWIPE LIKE REAL INSHORTS
-                  return PageView.builder(
-                    scrollDirection: Axis.vertical,
-                    itemCount: newsProvider.articles.length,
-                    itemBuilder: (context, index) {
-                      final article = newsProvider.articles[index];
-                      return NewsCard(article: article);
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
+      /// 🔹 BOTTOM NAVIGATION
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: Colors.red,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'News'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.sports_soccer), label: 'Live Score'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bookmark), label: 'Bookmarks'),
         ],
       ),
     );
