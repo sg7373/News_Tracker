@@ -9,37 +9,50 @@ class NewsService {
 
   // 1. Fetch Top Headlines (News)
   Future<List<Article>> fetchTopHeadlines({required String category}) async {
-    final url = '$_baseUrl/top-news?source-country=us&language=en&api-key=$_apiKey';
+    final Uri url = Uri.https(
+      'api.worldnewsapi.com',
+      '/top-news',
+      {
+        'source-country': 'us',
+        'language': 'en',
+        'api-key': _apiKey,
+      },
+    );
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(url);
+
+      print("URL: $url");
+      print("Status: ${response.statusCode}");
+      print("Body: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final List? topNewsClusters = data['top_news'];
-        
-        if (topNewsClusters == null) return [];
+
+        final List? clusters = data['top_news'];
+        if (clusters == null) return [];
 
         List<Article> articles = [];
-        for (var cluster in topNewsClusters) {
+
+        for (var cluster in clusters) {
           if (cluster['news'] != null && cluster['news'].isNotEmpty) {
-            // Mapping World News API data to your Article model
             articles.add(Article.fromJson(cluster['news'][0]));
           }
         }
+
         return articles;
       } else {
-        throw Exception('Failed to load news: ${response.statusCode}');
+        throw Exception('Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('News Fetch Error: $e');
+      throw Exception('WorldNews Fetch Error: $e');
     }
   }
 
   // 2. Search News
   Future<List<Article>> searchNews({required String query}) async {
     final url = '$_baseUrl/search-news?text=$query&api-key=$_apiKey';
-    
+
     try {
       final response = await http.get(Uri.parse(url));
 
@@ -57,11 +70,12 @@ class NewsService {
   }
 
   // 3. Fetch Live Scores (Football/Cricket)
-  // Note: Since World News API is mainly for text news, we use a 
+  // Note: Since World News API is mainly for text news, we use a
   // sports-specific API here. Ensure your MatchScore model matches this.
   Future<List<MatchScore>> fetchLiveScores() async {
     // Replace this with your actual Sports API URL (e.g., CricAPI or Sportmonks)
-    final String sportsUrl = 'https://api.your-sports-api.com/v1/live?api-key=YOUR_SPORTS_KEY';
+    final String sportsUrl =
+        'https://api.your-sports-api.com/v1/live?api-key=YOUR_SPORTS_KEY';
 
     try {
       final response = await http.get(Uri.parse(sportsUrl));
@@ -70,9 +84,9 @@ class NewsService {
         final data = jsonDecode(response.body);
         // Usually, sports APIs return a list under 'data', 'matches', or 'livescore'
         final List? matchesJson = data['matches'] ?? data['data'];
-        
+
         if (matchesJson == null) return [];
-        
+
         return matchesJson.map((json) => MatchScore.fromJson(json)).toList();
       } else {
         print('Sports API Error: ${response.statusCode}');
