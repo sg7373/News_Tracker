@@ -1,45 +1,28 @@
-// lib/models/article.dart
 class Article {
-  final String title;
+  final String? title;
   final String? description;
+  final String? url;
   final String? urlToImage;
-  final String sourceName;
-  final DateTime publishedAt;
-  final String url;
+  final String? sourceName;
+  final DateTime? publishedAt;
 
   Article({
-    required this.title,
+    this.title,
     this.description,
+    this.url,
     this.urlToImage,
-    required this.sourceName,
-    required this.publishedAt,
-    required this.url,
+    this.sourceName,
+    this.publishedAt,
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
     return Article(
-      title: json['title'] ?? 'No Title',
-      description: json['text'] ?? json['summary'] ?? '',
-      urlToImage: json['image'], // Correct for World News API
-      // 🔥 This fix prevents the "NoSuchMethodError: ['name']" crash
-      sourceName: (json['source'] != null)
-          ? (json['source']['name'] ?? 'News')
-          : 'News',
-      publishedAt: json['publish_date'] != null
-          ? DateTime.parse(json['publish_date'])
-          : DateTime.now(),
-      url: json['url'] ?? '',
+      title: json['title'],
+      description: json['description'],
+      url: json['url'],
+      urlToImage: json['urlToImage'],
+      sourceName: json['source']['name'],  // 🔹 This is where 'sourceName' comes from
+      publishedAt: DateTime.tryParse(json['publishedAt'] ?? ''),
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'title': title,
-      'description': description,
-      'urlToImage': urlToImage,
-      'sourceName': sourceName,
-      'publishedAt': publishedAt.toIso8601String(),
-      'url': url,
-    };
   }
 }

@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => NewsProvider()..fetchNews(category: 'general'),
       child: MaterialApp(
-        title: 'Inshorts Clone',
+        title: 'News Tracker',
         theme: ThemeData(
           primarySwatch: Colors.blue,
           useMaterial3: true,

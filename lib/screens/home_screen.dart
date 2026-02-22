@@ -39,10 +39,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     final newsProvider = Provider.of<NewsProvider>(context, listen: false);
 
-    // 🔹 Fetch news immediately on screen load
+    // 🔹 Fetch news for the default category immediately
     newsProvider.fetchNews(category: newsProvider.currentCategory);
 
-    // 🔹 Auto-refresh news every 5 minutes (you can change interval)
+    // 🔹 Auto-refresh current category news every 5 minutes
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       newsProvider.fetchNews(category: newsProvider.currentCategory);
     });
@@ -82,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   onSelected: (selected) {
                     if (selected) {
+                      // 🔹 Change category and fetch only that category news
                       newsProvider.changeCategory(cat['code']!);
                     }
                   },
@@ -94,9 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
         /// 🔹 NEWS CONTENT
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () => newsProvider.fetchNews(
-              category: newsProvider.currentCategory,
-            ),
+            onRefresh: () =>
+                newsProvider.fetchNews(category: newsProvider.currentCategory),
             child: Builder(
               builder: (_) {
                 if (newsProvider.isLoading) {
@@ -169,19 +169,15 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const SearchScreen()));
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const SearchScreen()));
             },
           ),
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const ProfileScreen()));
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()));
             },
           ),
         ],
