@@ -19,7 +19,7 @@ class NewsFeedScreen extends StatelessWidget {
         itemCount: newsProvider.articles.length,
         itemBuilder: (context, index) {
           final article = newsProvider.articles[index];
-          return NewsCardInshorts(article: article);
+          return NewsCard(article: article);
         },
       );
     }

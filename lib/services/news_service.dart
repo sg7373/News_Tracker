@@ -5,7 +5,7 @@ import '../models/match.dart'; // Make sure this file exists
 
 class NewsService {
   final String _apiKey = 'b28b37248a254603a20b0633d600fd95';
-  final String _baseUrl = 'https://api.worldnewsapi.com';
+  final String _baseUrl = 'https://api.worldnewsapi.com/';
 
   // 1. Fetch Top Headlines (News)
   Future<List<Article>> fetchTopHeadlines({required String category}) async {
