@@ -25,12 +25,11 @@ class NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Height so roughly 3 cards fit per screen
     double cardHeight = MediaQuery.of(context).size.height * 0.30;
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 750),
+        constraints: const BoxConstraints(maxWidth: 750, minHeight: 180),
         child: Container(
           height: cardHeight,
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -57,32 +56,30 @@ class NewsCard extends StatelessWidget {
                   child: article.urlToImage != null && article.urlToImage!.isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: article.urlToImage!,
-                          width: 110,
+                          width: 140, // Increased slightly for better look
                           height: double.infinity,
                           fit: BoxFit.cover,
-                          httpHeaders: const {
-                            "User-Agent":
-                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                          },
+                          // Important for Web CORS issues sometimes
+                          filterQuality: FilterQuality.low, 
                           placeholder: (context, url) => Container(
-                            width: 110,
-                            color: Colors.grey[200],
+                            width: 140,
+                            color: Colors.grey[100],
                             child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                           ),
                           errorWidget: (context, url, error) => Container(
-                            width: 110,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.broken_image, size: 25),
+                            width: 140,
+                            color: Colors.grey[100],
+                            child: const Icon(Icons.broken_image, size: 30, color: Colors.grey),
                           ),
                         )
                       : Container(
-                          width: 110,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image, size: 25),
+                          width: 140,
+                          color: Colors.grey[100],
+                          child: const Icon(Icons.image, size: 30, color: Colors.grey),
                         ),
                 ),
 
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
 
                 /// 🔹 RIGHT CONTENT
                 Expanded(
@@ -93,10 +90,7 @@ class NewsCard extends StatelessWidget {
                         article.title ?? "No Title",
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -105,60 +99,50 @@ class NewsCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // 🔹 Flexible description to avoid overflow
-                      Flexible(
+                      // This Expanded pushes the Row below it to the bottom
+                      Expanded(
                         child: Text(
                           article.description ?? "",
-                          maxLines: 4,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.black87,
-                            height: 1.4,
-                          ),
+                          style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
                         ),
                       ),
-                      const SizedBox(height: 8),
 
-                      /// 🔹 FOOTER ACTIONS
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              InkWell(
-                                onTap: () => Share.share(
-                                    '${article.title ?? ""}\n${article.url ?? ""}'),
-                                child: const Icon(Icons.share, size: 18, color: Colors.blueGrey),
-                              ),
-                              const SizedBox(width: 20),
-                              InkWell(
-                                onTap: () {
-                                  if (article.url != null && article.url!.isNotEmpty) {
-                                    _launchURL(article.url!);
-                                  }
-                                },
-                                child: const Icon(Icons.open_in_browser,
-                                    size: 18, color: Colors.blueGrey),
-                              ),
-                            ],
-                          ),
-                          InkWell(
-                            onTap: () {
-                              if (article.url != null && article.url!.isNotEmpty) {
-                                _launchURL(article.url!);
-                              }
-                            },
-                            child: const Text(
-                              "read more",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.blueAccent,
+                      /// 🔹 FOOTER ACTIONS (Now pinned to bottom)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: () => Share.share('${article.title}\n${article.url}'),
+                                  child: const Icon(Icons.share_outlined, size: 20, color: Colors.blueGrey),
+                                ),
+                                const SizedBox(width: 20),
+                                InkWell(
+                                  onTap: () {
+                                     // Bookmark logic here
+                                  },
+                                  child: const Icon(Icons.bookmark_border, size: 20, color: Colors.blueGrey),
+                                ),
+                              ],
+                            ),
+                            InkWell(
+                              onTap: () => _launchURL(article.url ?? ""),
+                              child: const Text(
+                                "read more",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       )
                     ],
                   ),
