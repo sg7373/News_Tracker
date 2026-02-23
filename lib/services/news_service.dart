@@ -3,101 +3,124 @@ import 'package:http/http.dart' as http;
 import '../models/article.dart';
 
 class NewsService {
-  final String apiKey = "d7b58ae4d4754df583e78e92879f7f94"; 
+  final String apiKey = "d7b58ae4d4754df583e78e92879f7f94";
 
-  // ===============================
-  // FETCH TRENDING NEWS (TOP HEADLINES)
-  // ===============================
+  // =====================================================~
+  // FETCH TRENDING NEWS
+  // =====================================================
   Future<List<Article>> fetchTrending() async {
     final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?country=us&pageSize=20&apiKey=$apiKey",
+      "https://newsapi.org/v2/everything?q=india&language=en&sortBy=publishedAt&pageSize=20&apiKey=$apiKey",
     );
 
     try {
       final response = await http.get(url);
+
+      print("Trending STATUS: ${response.statusCode}");
+      print("Trending BODY: ${response.body}");
+
+      if (response.statusCode != 200) {
+        throw Exception("Server error: ${response.statusCode}");
+      }
+
       final data = jsonDecode(response.body);
 
-      print("Trending Response: $data"); // 👈 Debug print
-
-      if (response.statusCode == 200 && data["status"] == "ok") {
-        List articles = data["articles"];
-
-        return articles
-            .where((json) =>
-                json["title"] != null &&
-                json["title"] != "[Removed]" &&
-                json["url"] != null)
-            .map((json) => Article.fromJson(json))
-            .toList();
-      } else {
+      if (data["status"] != "ok") {
         throw Exception(data["message"] ?? "Failed to fetch trending news");
       }
+
+      List articles = data["articles"] ?? [];
+
+      return articles
+          .where((json) =>
+              json["title"] != null &&
+              json["title"] != "[Removed]" &&
+              json["url"] != null)
+          .map<Article>((json) => Article.fromJson(json))
+          .toList();
     } catch (e) {
-      throw Exception("Error fetching trending news: $e");
+      print("Trending ERROR: $e");
+      return [];
     }
   }
 
-  // ===============================
+  // =====================================================
   // FETCH TOP HEADLINES BY CATEGORY
-  // ===============================
+  // =====================================================
   Future<List<Article>> fetchTopHeadlines({required String category}) async {
     final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?country=us&category=$category&apiKey=$apiKey",
+      "https://newsapi.org/v2/top-headlines?country=us&category=${Uri.encodeComponent(category)}&pageSize=20&apiKey=$apiKey",
     );
 
     try {
       final response = await http.get(url);
+
+      print("Category STATUS: ${response.statusCode}");
+      print("Category BODY: ${response.body}");
+
+      if (response.statusCode != 200) {
+        throw Exception("Server error: ${response.statusCode}");
+      }
+
       final data = jsonDecode(response.body);
 
-      print("Top Headlines Response: $data"); // 👈 Debug print
-
-      if (response.statusCode == 200 && data["status"] == "ok") {
-        List articles = data["articles"];
-
-        return articles
-            .where((json) =>
-                json["title"] != null &&
-                json["title"] != "[Removed]" &&
-                json["url"] != null)
-            .map((json) => Article.fromJson(json))
-            .toList();
-      } else {
-        throw Exception(data["message"] ?? "Failed to load news");
+      if (data["status"] != "ok") {
+        throw Exception(data["message"] ?? "Failed to load category news");
       }
+
+      List articles = data["articles"] ?? [];
+
+      return articles
+          .where((json) =>
+              json["title"] != null &&
+              json["title"] != "[Removed]" &&
+              json["url"] != null)
+          .map<Article>((json) => Article.fromJson(json))
+          .toList();
     } catch (e) {
-      throw Exception("Error fetching news: $e");
+      print("Category ERROR: $e");
+      return [];
     }
   }
 
-  // ===============================
+  // =====================================================
   // SEARCH NEWS
-  // ===============================
+  // =====================================================
   Future<List<Article>> searchNews({required String query}) async {
+    final encodedQuery = Uri.encodeComponent(query);
+
     final url = Uri.parse(
-      "https://newsapi.org/v2/everything?q=$query&sortBy=publishedAt&language=en&apiKey=$apiKey",
+      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=20&apiKey=$apiKey",
     );
 
     try {
       final response = await http.get(url);
+
+      print("Search STATUS: ${response.statusCode}");
+      print("Search BODY: ${response.body}");
+
+      if (response.statusCode != 200) {
+        throw Exception("Server error: ${response.statusCode}");
+      }
+
       final data = jsonDecode(response.body);
 
-      print("Search Response: $data"); // 👈 Debug print
-
-      if (response.statusCode == 200 && data["status"] == "ok") {
-        List articles = data["articles"];
-
-        return articles
-            .where((json) =>
-                json["title"] != null &&
-                json["title"] != "[Removed]" &&
-                json["url"] != null)
-            .map((json) => Article.fromJson(json))
-            .toList();
-      } else {
+      if (data["status"] != "ok") {
         throw Exception(data["message"] ?? "Search failed");
       }
+
+      List articles = data["articles"] ?? [];
+
+      return articles
+          .where((json) =>
+              json["title"] != null &&
+              json["title"] != "[Removed]" &&
+              json["url"] != null)
+          .map<Article>((json) => Article.fromJson(json))
+          .toList();
     } catch (e) {
-      throw Exception("Error searching news: $e");
+      print("Search ERROR: $e");
+      return [];
     }
   }
 }
