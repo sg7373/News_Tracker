@@ -1,20 +1,26 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/match.dart'; // Ensure this file now uses 'MatchScore'
+import '../models/match.dart';
+import '../constants/api_keys.dart';
 
 class SportsService {
-  // Football API Logic
+  // ── Football: api-football v3 via RapidAPI ──────────────────────────────
   Future<List<MatchScore>> fetchFootballMatches() async {
-    final url = Uri.parse('https://api-football.com/matches?apiKey=67f7e18c172fb1e3b55fce3610af88d4');
-    
+    final url = Uri.parse('https://v3.football.api-sports.io/fixtures?live=all');
+
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: {
+        'X-RapidAPI-Key': footballApiKey,
+        'X-RapidAPI-Host': 'v3.football.api-sports.io',
+      });
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List matchesJson = data['matches'] ?? [];
-        return matchesJson.map((e) => MatchScore.fromJson(e)).toList();
+        final List results = data['response'] ?? [];
+        return results.map((e) => MatchScore.fromFootball(e)).toList();
       } else {
-        return []; // Return empty list instead of crashing
+        print('Football API Error: ${response.statusCode} - ${response.body}');
+        return [];
       }
     } catch (e) {
       print('Football Fetch Error: $e');
@@ -22,17 +28,23 @@ class SportsService {
     }
   }
 
-  // Cricket API Logic
+  // ── Cricket: cricapi v1 ─────────────────────────────────────────────────
   Future<List<MatchScore>> fetchCricketMatches() async {
-    final url = Uri.parse('https://cricapi.com/api/matches?apikey=5fe5d118-bffb-41de-8f66-31f820caa504');
-    
+    final url = Uri.parse(
+        'https://api.cricapi.com/v1/currentMatches?apikey=$cricketApiKey&offset=0');
+
     try {
       final response = await http.get(url);
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List matchesJson = data['matches'] ?? [];
-        return matchesJson.map((e) => MatchScore.fromJson(e)).toList();
+        final List results = data['data'] ?? [];
+        return results
+            .where((e) => e['matchStarted'] == true)
+            .map((e) => MatchScore.fromCricket(e))
+            .toList();
       } else {
+        print('Cricket API Error: ${response.statusCode} - ${response.body}');
         return [];
       }
     } catch (e) {

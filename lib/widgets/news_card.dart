@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/article.dart';
-import 'package:inshorts_clone/services/bookmark_service.dart';
+import 'package:news_tracker/services/bookmark_service.dart';
 
 class NewsCard extends StatefulWidget {
   final Article article;
@@ -28,7 +28,6 @@ class _NewsCardState extends State<NewsCard> {
     _checkBookmark();
   }
 
-  // 🌟 FIX: Updates bookmark icon if you scroll fast and cards are reused
   @override
   void didUpdateWidget(covariant NewsCard oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -38,23 +37,21 @@ class _NewsCardState extends State<NewsCard> {
   }
 
   Future<void> _checkBookmark() async {
-    final title = widget.article.title ?? "";
+    final title = widget.article.title;
     if (title.isEmpty) return;
     final result = await BookmarkService.isBookmarked(title);
     if (mounted) setState(() => isBookmarked = result);
   }
 
   Future<void> _toggleBookmark() async {
-    final title = widget.article.title ?? "Untitled";
-    
-    // 🌟 ENHANCEMENT: Prepare data safely
+    final title = widget.article.title;
     final articleData = {
       "title": widget.article.title,
       "description": widget.article.description,
       "url": widget.article.url,
       "urlToImage": widget.article.urlToImage,
-      "sourceName": widget.article.sourceName,
-      "publishedAt": widget.article.publishedAt?.toIso8601String(),
+      "source": {"name": widget.article.sourceName},
+      "publishedAt": widget.article.publishedAt.toIso8601String(),
     };
 
     if (isBookmarked) {
@@ -64,126 +61,193 @@ class _NewsCardState extends State<NewsCard> {
       await BookmarkService.addBookmark(articleData);
       _showSnackBar("Added to bookmarks");
     }
-
     if (mounted) setState(() => isBookmarked = !isBookmarked);
   }
 
-  // 🌟 NEW: Helper for user feedback
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 1),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   Future<void> _launchURL(String urlString) async {
     if (urlString.isEmpty) return;
     final Uri url = Uri.parse(urlString);
     try {
-      // 🌟 FIX: externalApplication is safer for web/mobile compatibility
       await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (e) {
+    } catch (_) {
       _showSnackBar("Could not open link");
     }
   }
 
+  Widget _buildImage(String? url) {
+    if (url == null || url.isEmpty) {
+      return Container(
+        color: Colors.grey[200],
+        child: const Center(child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey)),
+      );
+    }
+    final imageUrl = url.startsWith('http') ? "https://corsproxy.io/?$url" : url;
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.grey[200],
+        child: const Center(child: Icon(Icons.broken_image, color: Colors.grey, size: 40)),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('h:mm a \'on\' EEEE, d MMMM y').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 🌟 FIX: Dynamic height to prevent overflow on small screens
-    double cardHeight = MediaQuery.of(context).size.height * 0.28;
-    if (cardHeight < 200) cardHeight = 200; 
+    final article = widget.article;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 750),
+        constraints: const BoxConstraints(maxWidth: 680),
         child: Container(
-          height: cardHeight,
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+          margin: EdgeInsets.symmetric(
+            vertical: isMobile ? 6 : 10,
+            horizontal: isMobile ? 0 : 16,
           ),
-          child: ClipRRect( // 🌟 Added ClipRRect here to ensure child content doesn't bleed out
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(14),
+            boxShadow: isMobile
+                ? []
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+          ),
+          child: ClipRRect(
+            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(14),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// 🔹 IMAGE SECTION
+                /// ── IMAGE ───────────────────────────────────────────────
                 SizedBox(
-                  width: 140,
-                  height: double.infinity,
-                  child: _buildImage(widget.article.urlToImage),
+                  height: isMobile ? screenHeight * 0.30 : 220,
+                  width: double.infinity,
+                  child: _buildImage(article.urlToImage),
                 ),
 
-                /// 🔹 CONTENT SECTION
+                /// ── CONTENT ─────────────────────────────────────────────
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        /// TITLE
                         Text(
-                          widget.article.title ?? "No Title",
-                          maxLines: 2,
+                          article.title,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "${widget.article.sourceName ?? 'News'} • ${_formatDate(widget.article.publishedAt)}",
-                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: Text(
-                            widget.article.description ?? "No description available.",
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13, height: 1.3),
+                          style: TextStyle(
+                            fontSize: isMobile ? 18 : 20,
+                            fontWeight: FontWeight.bold,
+                            height: 1.3,
+                            color: Colors.black87,
                           ),
                         ),
-                        
-                        /// 🔹 ACTION BAR
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.share_outlined, size: 20),
-                                  onPressed: () => Share.share('${widget.article.title}\n${widget.article.url}'),
-                                  constraints: const BoxConstraints(),
-                                  padding: const EdgeInsets.only(right: 15),
+
+                        const SizedBox(height: 6),
+
+                        /// SOURCE • TIME
+                        RichText(
+                          text: TextSpan(
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            children: [
+                              TextSpan(
+                                text: 'short',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                  fontStyle: FontStyle.italic,
                                 ),
-                                IconButton(
-                                  icon: Icon(
-                                    isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                                    size: 20,
-                                    color: isBookmarked ? Colors.blue : Colors.black,
-                                  ),
-                                  onPressed: _toggleBookmark,
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                ),
-                              ],
+                              ),
+                              TextSpan(text: '  by '),
+                              TextSpan(
+                                text: article.sourceName,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              TextSpan(text: ' / ${_formatDate(article.publishedAt)}'),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        /// DESCRIPTION
+                        Expanded(
+                          child: Text(
+                            article.description ?? 'No description available.',
+                            style: TextStyle(
+                              fontSize: isMobile ? 14 : 15,
+                              height: 1.55,
+                              color: Colors.black87,
                             ),
-                            TextButton(
-                              onPressed: () => _launchURL(widget.article.url ?? ""),
-                              child: const Text("READ MORE", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            overflow: TextOverflow.fade,
+                          ),
+                        ),
+
+                        const Divider(height: 1),
+
+                        /// ── ACTION BAR ─────────────────────────────────
+                        Row(
+                          children: [
+                            // Share
+                            _iconBtn(
+                              icon: Icons.share_outlined,
+                              onTap: () => Share.share('${article.title}\n${article.url}'),
+                            ),
+                            const SizedBox(width: 4),
+                            // Bookmark
+                            _iconBtn(
+                              icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                              color: isBookmarked ? Colors.red : Colors.black54,
+                              onTap: _toggleBookmark,
+                            ),
+
+                            const Spacer(),
+
+                            // Read more
+                            GestureDetector(
+                              onTap: () => _launchURL(article.url),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: TextStyle(fontSize: 13, color: Colors.blue[800]),
+                                  children: const [
+                                    TextSpan(text: 'read more at '),
+                                    TextSpan(
+                                      text: 'source',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -196,28 +260,18 @@ class _NewsCardState extends State<NewsCard> {
     );
   }
 
-  // 🌟 NEW: Cleaner Image Builder with CORS handling
-  Widget _buildImage(String? url) {
-    if (url == null || url.isEmpty) {
-      return Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported));
-    }
-    
-    // For Web Compatibility
-    final imageUrl = url.startsWith('http') ? "https://corsproxy.io/?$url" : url;
-
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: Colors.grey[200],
-        child: const Icon(Icons.broken_image, color: Colors.grey),
+  Widget _iconBtn({
+    required IconData icon,
+    Color color = Colors.black54,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Icon(icon, size: 20, color: color),
       ),
     );
-  }
-
-  // 🌟 NEW: Safe Date Formatting
-  String _formatDate(DateTime? date) {
-    if (date == null) return "Just now";
-    return DateFormat('MMM d, h:mm a').format(date);
   }
 }

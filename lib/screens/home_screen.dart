@@ -1,4 +1,4 @@
-import 'dart:async'; // 🔹 Needed for Timer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/news_provider.dart';
@@ -6,6 +6,7 @@ import '../widgets/news_card.dart';
 import 'live_score.dart';
 import 'search_screen.dart';
 import 'profile_screen.dart';
+import 'bookmarks_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -148,8 +149,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     /// 🔹 SCREENS FOR BOTTOM NAVIGATION
     final List<Widget> screens = [
-      _newsFeed(newsProvider), // News Feed
-      const LiveScoreScreen(), // Live Score placeholder
+      _newsFeed(newsProvider),   // News Feed
+      const LiveScoreScreen(),   // Live Scores
+      const BookmarksScreen(),   // Bookmarks
     ];
 
     return Scaffold(
@@ -158,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
       /// 🔹 MODERN APP BAR
       appBar: AppBar(
         title: const Text(
-          'Inshorts Clone',
+          'News Tracker',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
