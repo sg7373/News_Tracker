@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/article.dart';
 
 class NewsService {
-  final String apiKey = "d7b58ae4d4754df583e78e92879f7f94";
+  final String apiKey = "YOUR-API_KEY";
 
   // =====================================================~
   // FETCH TRENDING NEWS
