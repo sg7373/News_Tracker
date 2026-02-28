@@ -38,17 +38,26 @@ class SportsService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        // CricAPI v1 wraps results in "data" key
+        // status field tells if the request was successful
+        if (data['status'] != 'success') {
+          print('Cricket API returned non-success status: ${data['status']}');
+          print('Cricket API message: ${data['message'] ?? 'unknown error'}');
+          return [];
+        }
+
         final List results = data['data'] ?? [];
         return results
-            .where((e) => e['matchStarted'] == true)
             .map((e) => MatchScore.fromCricket(e))
             .toList();
       } else {
-        print('Cricket API Error: ${response.statusCode} - ${response.body}');
+        print('Cricket API HTTP Error: ${response.statusCode}');
+        print('Cricket API Body: ${response.body}');
         return [];
       }
     } catch (e) {
-      print('Cricket Fetch Error: $e');
+      print('Cricket Fetch Exception: $e');
       return [];
     }
   }

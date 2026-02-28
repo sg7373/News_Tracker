@@ -16,13 +16,29 @@ class Article {
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
+    // NewsAPI's 'content' field often has more substance, but ends with '[+1234 chars]'.
+    String? contentData = json['content'];
+    if (contentData != null) {
+      contentData = contentData.replaceAll(RegExp(r'\[\+\d+\s+chars\]'), '').trim();
+      if (contentData.isNotEmpty && !contentData.endsWith('.')) {
+        contentData += '...';
+      } else if (contentData.isNotEmpty) {
+        contentData += '..';
+      }
+    }
+    
+    // Prioritize cleaned content > regular description
+    String? finalDescription = (contentData != null && contentData.isNotEmpty) 
+        ? contentData 
+        : json['description'];
+
     return Article(
       title: json['title'] ?? '',
-      description: json['description'],
+      description: finalDescription,
       urlToImage: json['urlToImage'],
       url: json['url'] ?? '',
       sourceName: json['source']?['name'] ?? '',
-      publishedAt: DateTime.parse(json['publishedAt']),
+      publishedAt: json['publishedAt'] != null ? DateTime.parse(json['publishedAt']) : DateTime.now(),
     );
   }
 

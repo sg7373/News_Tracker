@@ -126,11 +126,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   return const Center(child: Text('No news available'));
                 }
 
-                /// 🔥 VERTICAL PAGEVIEW LIKE INSHORTS
-                return PageView.builder(
-                  scrollDirection: Axis.vertical,
-                  itemCount: newsProvider.articles.length,
+                /// 🔥 REGULAR LISTVIEW FOR SMOOTH SCROLLING
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: newsProvider.articles.length + (newsProvider.hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index == newsProvider.articles.length) {
+                      // 🔹 LOAD MORE BUTTON / SPINNER
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                        child: Center(
+                          child: newsProvider.isMoreLoading
+                              ? const CircularProgressIndicator()
+                              : SizedBox(
+                                  width: 200,
+                                  child: ElevatedButton(
+                                    onPressed: () => newsProvider.loadMore(),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: Colors.black,
+                                      elevation: 4,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    child: const Text('Load More', style: TextStyle(fontWeight: FontWeight.w500)),
+                                  ),
+                                ),
+                        ),
+                      );
+                    }
+                    
                     final article = newsProvider.articles[index];
                     return NewsCard(article: article);
                   },

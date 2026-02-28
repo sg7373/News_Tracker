@@ -84,178 +84,247 @@ class _NewsCardState extends State<NewsCard> {
 
   Widget _buildImage(String? url) {
     if (url == null || url.isEmpty) {
-      return Container(
-        color: Colors.grey[200],
-        child: const Center(child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey)),
-      );
+      return _buildPlaceholder();
     }
-    final imageUrl = url.startsWith('http') ? "https://corsproxy.io/?$url" : url;
+
+    // Handle protocol-relative URLs (e.g., //example.com/image.jpg)
+    String imageUrl = url;
+    if (url.startsWith('//')) {
+      imageUrl = 'https:$url';
+    }
+
+    // Use CORS proxy only for external HTTP/HTTPS URLs on Web
+    final finalUrl = imageUrl.startsWith('http') 
+        ? "https://corsproxy.io/?${Uri.encodeComponent(imageUrl)}" 
+        : imageUrl;
+
     return Image.network(
-      imageUrl,
+      finalUrl,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      errorBuilder: (_, __, ___) => Container(
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                : null,
+            strokeWidth: 2,
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // If proxy fails, try direct URL as a last resort
+        return Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
         color: Colors.grey[200],
-        child: const Center(child: Icon(Icons.broken_image, color: Colors.grey, size: 40)),
+        image: const DecorationImage(
+          image: NetworkImage('https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop'),
+          fit: BoxFit.cover,
+          opacity: 0.3,
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.security, color: Colors.grey, size: 40),
+            SizedBox(height: 8),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                "Security Reason Restriction",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('h:mm a \'on\' EEEE, d MMMM y').format(date);
+    return DateFormat('hh:mm a \'on\' EEEE, d MMMM yyyy').format(date);
   }
 
   @override
   Widget build(BuildContext context) {
     final article = widget.article;
-    final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isMobile = screenWidth < 800;
 
+    // We build the layout shown in the user's screenshot
+    // A horizontally stacked Row with Image on left, Content on right
+    
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 680),
+        constraints: const BoxConstraints(maxWidth: 850), // Matches desktop Inshorts view
         child: Container(
+          height: isMobile ? screenHeight * 0.85 : 300, // Reduced height for the horizontal card on desktop
           margin: EdgeInsets.symmetric(
             vertical: isMobile ? 6 : 10,
             horizontal: isMobile ? 0 : 16,
           ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(14),
-            boxShadow: isMobile
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
+            borderRadius: BorderRadius.circular(4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              )
+            ],
           ),
           child: ClipRRect(
-            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            borderRadius: BorderRadius.circular(4),
+            child: isMobile
+                ? _buildMobileLayout(article, screenHeight)
+                : _buildDesktopLayout(article),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(Article article, double screenHeight) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: screenHeight * 0.35,
+          width: double.infinity,
+          child: _buildImage(article.urlToImage),
+        ),
+        Expanded(child: _buildContent(article, true)),
+      ],
+    );
+  }
+
+  Widget _buildDesktopLayout(Article article) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 320,
+          height: double.infinity,
+          child: _buildImage(article.urlToImage),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16.0),
+            child: _buildContent(article, false),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(Article article, bool isMobile) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// TITLE
+          Text(
+            article.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: isMobile ? 18 : 22,
+              fontWeight: FontWeight.w400,
+              height: 1.25,
+              color: const Color(0xff44444d),
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+
+          /// SOURCE • TIME
+          RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 12, color: Color(0xff808290)),
               children: [
-                /// ── IMAGE ───────────────────────────────────────────────
-                SizedBox(
-                  height: isMobile ? screenHeight * 0.30 : 220,
-                  width: double.infinity,
-                  child: _buildImage(article.urlToImage),
+                const TextSpan(
+                  text: 'short',
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
+                const TextSpan(text: ' by '),
+                TextSpan(
+                  text: article.sourceName.isEmpty ? 'Unknown' : article.sourceName,
+                ),
+                TextSpan(text: ' / ${_formatDate(article.publishedAt)}'),
+              ],
+            ),
+          ),
 
-                /// ── CONTENT ─────────────────────────────────────────────
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 12),
+
+          /// DESCRIPTION
+          Expanded(
+            child: Text(
+              article.description ?? 'No description available for this article.',
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.5,
+                fontWeight: FontWeight.w300,
+                color: Color(0xff44444d),
+              ),
+              overflow: TextOverflow.fade,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          /// ACTION BAR (read more)
+          Row(
+            children: [
+              // Bottom left text for read more
+              if (article.url.isNotEmpty)
+                GestureDetector(
+                  onTap: () => _launchURL(article.url),
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(fontSize: 12, color: Colors.black87),
                       children: [
-                        /// TITLE
-                        Text(
-                          article.title,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: isMobile ? 18 : 20,
-                            fontWeight: FontWeight.bold,
-                            height: 1.3,
-                            color: Colors.black87,
-                          ),
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        /// SOURCE • TIME
-                        RichText(
-                          text: TextSpan(
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                            children: [
-                              TextSpan(
-                                text: 'short',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey[700],
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                              TextSpan(text: '  by '),
-                              TextSpan(
-                                text: article.sourceName,
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              TextSpan(text: ' / ${_formatDate(article.publishedAt)}'),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        /// DESCRIPTION
-                        Expanded(
-                          child: Text(
-                            article.description ?? 'No description available.',
-                            style: TextStyle(
-                              fontSize: isMobile ? 14 : 15,
-                              height: 1.55,
-                              color: Colors.black87,
-                            ),
-                            overflow: TextOverflow.fade,
-                          ),
-                        ),
-
-                        const Divider(height: 1),
-
-                        /// ── ACTION BAR ─────────────────────────────────
-                        Row(
-                          children: [
-                            // Share
-                            _iconBtn(
-                              icon: Icons.share_outlined,
-                              onTap: () => Share.share('${article.title}\n${article.url}'),
-                            ),
-                            const SizedBox(width: 4),
-                            // Bookmark
-                            _iconBtn(
-                              icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                              color: isBookmarked ? Colors.red : Colors.black54,
-                              onTap: _toggleBookmark,
-                            ),
-
-                            const Spacer(),
-
-                            // Read more
-                            GestureDetector(
-                              onTap: () => _launchURL(article.url),
-                              child: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(fontSize: 13, color: Colors.blue[800]),
-                                  children: const [
-                                    TextSpan(text: 'read more at '),
-                                    TextSpan(
-                                      text: 'source',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                        const TextSpan(text: 'read more at '),
+                        TextSpan(
+                          text: article.sourceName.isEmpty ? 'source' : article.sourceName,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              const Spacer(),
+              _iconBtn(
+                icon: Icons.share_outlined,
+                onTap: () => Share.share('${article.title}\n${article.url}'),
+              ),
+              _iconBtn(
+                icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                color: isBookmarked ? Colors.red : Colors.black54,
+                onTap: _toggleBookmark,
+              ),
+            ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -269,8 +338,8 @@ class _NewsCardState extends State<NewsCard> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Icon(icon, size: 20, color: color),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Icon(icon, size: 22, color: color),
       ),
     );
   }
