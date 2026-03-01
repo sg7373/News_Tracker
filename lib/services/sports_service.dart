@@ -19,12 +19,11 @@ class SportsService {
         final List results = data['response'] ?? [];
         return results.map((e) => MatchScore.fromFootball(e)).toList();
       } else {
-        print('Football API Error: ${response.statusCode} - ${response.body}');
-        return [];
+        throw Exception("Football API Error: ${response.statusCode}");
       }
     } catch (e) {
       print('Football Fetch Error: $e');
-      return [];
+      rethrow;
     }
   }
 
@@ -48,17 +47,79 @@ class SportsService {
         }
 
         final List results = data['data'] ?? [];
-        return results
-            .map((e) => MatchScore.fromCricket(e))
-            .toList();
+        return results.map((e) => MatchScore.fromCricket(e)).toList();
       } else {
-        print('Cricket API HTTP Error: ${response.statusCode}');
-        print('Cricket API Body: ${response.body}');
-        return [];
+        throw Exception("Cricket API Error: ${response.statusCode}");
       }
     } catch (e) {
       print('Cricket Fetch Exception: $e');
-      return [];
+      rethrow;
     }
+  }
+
+  // ── MOCK DATA FOR DEMO ──────────────────────────────────────────────
+  List<MatchScore> getMockFootballMatches() {
+    return [
+      MatchScore(
+        teamA: "Real Madrid",
+        teamB: "Barcelona",
+        score: "2 - 1",
+        status: "85'",
+        isLive: true,
+        date: "Today",
+        venue: "Santiago Bernabéu",
+        sport: "Football",
+        matchType: "La Liga",
+      ),
+      MatchScore(
+        teamA: "Arsenal",
+        teamB: "Man City",
+        score: "0 - 0",
+        status: "HT",
+        isLive: true,
+        date: "Today",
+        venue: "Emirates Stadium",
+        sport: "Football",
+        matchType: "Premier League",
+      ),
+      MatchScore(
+        teamA: "Bayern Munich",
+        teamB: "Dortmund",
+        score: "3 - 0",
+        status: "FT",
+        isLive: false,
+        date: "Yesterday",
+        venue: "Allianz Arena",
+        sport: "Football",
+        matchType: "Bundesliga",
+      ),
+    ];
+  }
+
+  List<MatchScore> getMockCricketMatches() {
+    return [
+      MatchScore(
+        teamA: "India",
+        teamB: "Pakistan",
+        score: "342/5 vs 120/3",
+        status: "India won by 120 runs",
+        isLive: false,
+        date: "Finished",
+        venue: "Narendra Modi Stadium",
+        sport: "Cricket",
+        matchType: "ODI World Cup",
+      ),
+      MatchScore(
+        teamA: "Australia",
+        teamB: "England",
+        score: "210/4 vs 198/all out",
+        status: "Match Live",
+        isLive: true,
+        date: "Today",
+        venue: "Melbourne Cricket Ground",
+        sport: "Cricket",
+        matchType: "T20I",
+      ),
+    ];
   }
 }

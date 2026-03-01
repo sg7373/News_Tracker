@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/article.dart';
-import 'package:news_tracker/services/bookmark_service.dart';
+import '../services/bookmark_service.dart';
+import '../services/auth_service.dart';
+import '../screens/login_screen.dart';
 
 class NewsCard extends StatefulWidget {
   final Article article;
@@ -54,6 +56,12 @@ class _NewsCardState extends State<NewsCard> {
       "publishedAt": widget.article.publishedAt.toIso8601String(),
     };
 
+    // 🛑 CHECK AUTH STATUS
+    if (AuthService().currentUser == null) {
+      _showLoginRequiredDialog();
+      return;
+    }
+
     if (isBookmarked) {
       await BookmarkService.removeBookmark(title);
       _showSnackBar("Removed from bookmarks");
@@ -62,6 +70,33 @@ class _NewsCardState extends State<NewsCard> {
       _showSnackBar("Added to bookmarks");
     }
     if (mounted) setState(() => isBookmarked = !isBookmarked);
+  }
+
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Login Required'),
+        content: const Text('Please Sign In or Create an Account to save news articles to your bookmarks.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Log In / Sign Up', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSnackBar(String message) {
@@ -257,20 +292,24 @@ class _NewsCardState extends State<NewsCard> {
           const SizedBox(height: 8),
 
           /// SOURCE • TIME
-          RichText(
-            text: TextSpan(
-              style: const TextStyle(fontSize: 12, color: Color(0xff808290)),
-              children: [
-                const TextSpan(
-                  text: 'short',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const TextSpan(text: ' by '),
-                TextSpan(
-                  text: article.sourceName.isEmpty ? 'Unknown' : article.sourceName,
-                ),
-                TextSpan(text: ' / ${_formatDate(article.publishedAt)}'),
-              ],
+          Flexible(
+            child: RichText(
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 12, color: Color(0xff808290)),
+                children: [
+                  const TextSpan(
+                    text: 'short',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const TextSpan(text: ' by '),
+                  TextSpan(
+                    text: article.sourceName.isEmpty ? 'Unknown' : article.sourceName,
+                  ),
+                  TextSpan(text: ' / ${_formatDate(article.publishedAt)}'),
+                ],
+              ),
             ),
           ),
 
@@ -297,22 +336,26 @@ class _NewsCardState extends State<NewsCard> {
             children: [
               // Bottom left text for read more
               if (article.url.isNotEmpty)
-                GestureDetector(
-                  onTap: () => _launchURL(article.url),
-                  child: RichText(
-                    text: TextSpan(
-                      style: const TextStyle(fontSize: 12, color: Colors.black87),
-                      children: [
-                        const TextSpan(text: 'read more at '),
-                        TextSpan(
-                          text: article.sourceName.isEmpty ? 'source' : article.sourceName,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _launchURL(article.url),
+                    child: RichText(
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                        children: [
+                          const TextSpan(text: 'read more at '),
+                          TextSpan(
+                            text: article.sourceName.isEmpty ? 'source' : article.sourceName,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              const Spacer(),
+              const SizedBox(width: 8),
               _iconBtn(
                 icon: Icons.share_outlined,
                 onTap: () => Share.share('${article.title}\n${article.url}'),

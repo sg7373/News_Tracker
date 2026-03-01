@@ -40,11 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     final newsProvider = Provider.of<NewsProvider>(context, listen: false);
 
-    // 🔹 Fetch news for the default category immediately
-    newsProvider.fetchNews(category: newsProvider.currentCategory);
+    // 🔹 Fetch news only if the list is currently empty to avoid duplicate requests
+    if (newsProvider.articles.isEmpty) {
+      newsProvider.fetchNews(category: newsProvider.currentCategory);
+    }
 
-    // 🔹 Auto-refresh current category news every 5 minutes
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    // 🔹 Auto-refresh current category news every 15 minutes (to stay within NewsAPI Free Tier limits)
+    _timer = Timer.periodic(const Duration(minutes: 15), (timer) {
       newsProvider.fetchNews(category: newsProvider.currentCategory);
     });
   }
@@ -104,11 +106,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (newsProvider.error != null) {
+                // 🔥 HANDLE ERRORS (Show banner if mock mode, otherwise show full screen)
+                if (newsProvider.error != null && !newsProvider.isMockMode) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                        const SizedBox(height: 16),
                         Text('Error: ${newsProvider.error}',
                             textAlign: TextAlign.center),
                         const SizedBox(height: 16),
@@ -126,41 +131,65 @@ class _HomeScreenState extends State<HomeScreen> {
                   return const Center(child: Text('No news available'));
                 }
 
-                /// 🔥 REGULAR LISTVIEW FOR SMOOTH SCROLLING
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: newsProvider.articles.length + (newsProvider.hasMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == newsProvider.articles.length) {
-                      // 🔹 LOAD MORE BUTTON / SPINNER
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                        child: Center(
-                          child: newsProvider.isMoreLoading
-                              ? const CircularProgressIndicator()
-                              : SizedBox(
-                                  width: 200,
-                                  child: ElevatedButton(
-                                    onPressed: () => newsProvider.loadMore(),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: Colors.black,
-                                      elevation: 4,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                    child: const Text('Load More', style: TextStyle(fontWeight: FontWeight.w500)),
-                                  ),
-                                ),
+                /// 🔥 SHOW LIST (With optional Mock Banner)
+                return Column(
+                  children: [
+                    if (newsProvider.isMockMode)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        color: Colors.orange.shade50,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline, size: 20, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                newsProvider.error ?? 'API Limit Reached. Showing Mock Data.',
+                                style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    }
-                    
-                    final article = newsProvider.articles[index];
-                    return NewsCard(article: article);
-                  },
+                      ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: newsProvider.articles.length + (newsProvider.hasMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == newsProvider.articles.length) {
+                            // 🔹 LOAD MORE BUTTON / SPINNER
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                              child: Center(
+                                child: newsProvider.isMoreLoading
+                                    ? const CircularProgressIndicator()
+                                    : SizedBox(
+                                        width: 200,
+                                        child: ElevatedButton(
+                                          onPressed: () => newsProvider.loadMore(),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.white,
+                                            foregroundColor: Colors.black,
+                                            elevation: 4,
+                                            padding: const EdgeInsets.symmetric(vertical: 16),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          child: const Text('Load More', style: TextStyle(fontWeight: FontWeight.w500)),
+                                        ),
+                                      ),
+                              ),
+                            );
+                          }
+                          
+                          final article = newsProvider.articles[index];
+                          return NewsCard(article: article);
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

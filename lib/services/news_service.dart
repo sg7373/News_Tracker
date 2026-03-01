@@ -1,23 +1,29 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/article.dart';
+import '../constants/api_keys.dart';
 
 class NewsService {
-  final String apiKey = "YOUR-API_KEY";
+  // 🔹 Use the central API key from constants/api_keys.dart for consistency and security
+  final String _apiKey = newsApiKey;
 
   // =====================================================
   // FETCH TRENDING NEWS
   // =====================================================
   Future<List<Article>> fetchTrending({int page = 1}) async {
-    // Using top-headlines with specific sources gets us the newest Today's news.
-    // The /everything endpoint is restricted to a 24-hour delay on free plans.
+    // 🔹 Massive list of 25+ major global and local sources to maximize "Unlimited" results for the project.
+    // This provides Today's (Feb 28) most diverse and comprehensive real-time feed.
     final sources = [
       'google-news', 'bbc-news', 'the-hindu', 'the-times-of-india', 
-      'reuters', 'associated-press', 'abc-news', 'cnn', 'fox-news', 'al-jazeera-english'
+      'reuters', 'associated-press', 'abc-news', 'cnn', 'fox-news', 'al-jazeera-english',
+      'the-washington-post', 'time', 'usa-today', 'the-verge', 'techcrunch', 
+      'wired', 'business-insider', 'bloomberg', 'cnbc', 'fortune', 'independent',
+      'the-wall-street-journal', 'guardian', 'financial-times', 'news-com-au'
     ].join(',');
     
+    // 🔹 Increased pageSize to 50 for a "Project-Ready" bulky first load
     final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?sources=$sources&pageSize=20&page=$page&apiKey=$apiKey",
+      "https://newsapi.org/v2/top-headlines?sources=$sources&pageSize=50&page=$page&apiKey=$_apiKey",
     );
 
     try {
@@ -46,7 +52,7 @@ class NewsService {
           .toList();
     } catch (e) {
       print("Trending ERROR: $e");
-      return [];
+      rethrow;
     }
   }
 
@@ -59,8 +65,9 @@ class NewsService {
       return fetchTrending(page: page);
     }
 
+    // 🔹 Using language=en and category logic for verified professional news sections.
     final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?language=en&category=${Uri.encodeComponent(category)}&pageSize=20&page=$page&apiKey=$apiKey",
+      "https://newsapi.org/v2/top-headlines?language=en&category=${Uri.encodeComponent(category)}&pageSize=50&page=$page&apiKey=$_apiKey",
     );
 
     try {
@@ -89,7 +96,7 @@ class NewsService {
           .toList();
     } catch (e) {
       print("Category ERROR: $e");
-      return [];
+      rethrow;
     }
   }
 
@@ -99,8 +106,9 @@ class NewsService {
   Future<List<Article>> searchNews({required String query, int page = 1}) async {
     final encodedQuery = Uri.encodeComponent(query);
 
+    // 🔹 Still 50 results per search to give that "Unlimited" look
     final url = Uri.parse(
-      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=20&page=$page&apiKey=$apiKey",
+      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=50&page=$page&apiKey=$_apiKey",
     );
 
     try {
@@ -129,7 +137,7 @@ class NewsService {
           .toList();
     } catch (e) {
       print("Search ERROR: $e");
-      return [];
+      rethrow;
     }
   }
 }

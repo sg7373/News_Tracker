@@ -16,6 +16,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   List<MatchScore> _cricketMatches = [];
   bool _isLoading = true;
   String? _error;
+  bool _isMockMode = false;
 
   @override
   void initState() {
@@ -27,6 +28,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _isMockMode = false;
     });
 
     try {
@@ -40,10 +42,21 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
+        setState(() {
+          _isMockMode = true;
+          _footballMatches = _sportsService.getMockFootballMatches();
+          _cricketMatches = _sportsService.getMockCricketMatches();
+          _error = "Free API Limit Exceeded. Showing Mock Data.";
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -53,7 +66,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       return const Center(child: CircularProgressIndicator(color: Colors.red));
     }
 
-    if (_error != null) {
+    if (_error != null && !_isMockMode) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -100,8 +113,27 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       onRefresh: _fetchScores,
       color: Colors.red,
       child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 0),
         children: [
+          if (_isMockMode)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: Colors.orange.shade50,
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 20, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error ?? 'API Limit Reached. Showing Mock Data.',
+                      style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
           if (_cricketMatches.isNotEmpty) ...[
             _sectionHeader('🏏 Cricket Match Center'),
             SizedBox(
@@ -216,9 +248,9 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
-                _teamRow(match.teamA, match.score.split(' vs ').first),
+                _teamRow(match.teamA, match.sport == 'football' ? match.score.split(' - ').first : (match.score.contains('vs') ? match.score.split(' vs ').first : match.score)),
                 const SizedBox(height: 8),
-                _teamRow(match.teamB, match.score.split(' vs ').last),
+                _teamRow(match.teamB, match.sport == 'football' ? match.score.split(' - ').last : (match.score.contains('vs') ? match.score.split(' vs ').last : '-')),
               ],
             ),
           ),
@@ -265,8 +297,8 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   }
 
   Widget _teamRow(String name, String score) {
-    if (score == '-') score = ''; // hide placeholder
-    
+    if (score == '-' || score == name) score = ''; 
+
     return Row(
       children: [
         // Placeholder Flag/Icon
@@ -291,12 +323,18 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             ),
           ),
         ),
+        const SizedBox(width: 12),
         if (score.isNotEmpty)
-          Text(
-            score,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 80),
+            child: Text(
+              score,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
       ],
