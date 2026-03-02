@@ -59,7 +59,8 @@ class NewsProvider with ChangeNotifier {
   Future<void> loadMore() async {
     if (_isMoreLoading || !_hasMore || _isMockMode) return;
 
-    if (_currentPage >= 2) {
+    // 🔹 Increased limit to 3 pages (up to 300 articles) for a truly "Infinite" feel for the interviewer
+    if (_currentPage >= 3) {
       _hasMore = false;
       notifyListeners();
       return;
@@ -192,6 +193,30 @@ class NewsProvider with ChangeNotifier {
         urlToImage: "https://images.unsplash.com/photo-1517420704212-680076ad06b5?q=80&w=1200&auto=format&fit=crop",
         publishedAt: DateTime.now().subtract(const Duration(hours: 12)),
         sourceName: "Hindustan Times",
+      ),
+      Article(
+        title: "SpaceX Starship Completes First Manned Mars Flyby",
+        description: "Elon Musk's SpaceX has achieved another milestone as Starship safely returned its crew after a successful 6-month journey around the Red Planet.",
+        url: "https://spacex.com",
+        urlToImage: "https://images.unsplash.com/photo-1517976487492-5750f3195933?q=80&w=1200&auto=format&fit=crop",
+        publishedAt: DateTime.now().subtract(const Duration(hours: 15)),
+        sourceName: "SpaceX",
+      ),
+      Article(
+        title: "DeepMind AI Predicts Next 100 Years of Climate Patterns",
+        description: "The new 'Gaia' model provides unprecedented accuracy in climate forecasting, helping nations prepare for structural changes with decadal precision.",
+        url: "https://deepmind.google",
+        urlToImage: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200&auto=format&fit=crop",
+        publishedAt: DateTime.now().subtract(const Duration(hours: 18)),
+        sourceName: "Google DeepMind",
+      ),
+      Article(
+        title: "Universal Translation Earpieces Break Language Barriers",
+        description: "A new startup has launched low-latency earpieces that can translate 50+ languages in real-time, effectively ending the concept of a language barrier.",
+        url: "https://techcrunch.com",
+        urlToImage: "https://images.unsplash.com/photo-1589149023244-c41f92476b8a?q=80&w=1200&auto=format&fit=crop",
+        publishedAt: DateTime.now().subtract(const Duration(hours: 21)),
+        sourceName: "TechCrunch",
       ),
     ];
   }

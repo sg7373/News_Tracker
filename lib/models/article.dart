@@ -28,9 +28,17 @@ class Article {
     }
     
     // Prioritize cleaned content > regular description
-    String? finalDescription = (contentData != null && contentData.isNotEmpty) 
+    String? finalDescription = (contentData != null && contentData.trim().isNotEmpty) 
         ? contentData 
         : json['description'];
+
+    // Clean up: If it's just whitespace or '[Removed]', treat as null
+    if (finalDescription != null) {
+      finalDescription = finalDescription.trim();
+      if (finalDescription.isEmpty || finalDescription == '[Removed]') {
+        finalDescription = null;
+      }
+    }
 
     return Article(
       title: json['title'] ?? '',

@@ -23,6 +23,7 @@ class NewsCard extends StatefulWidget {
 
 class _NewsCardState extends State<NewsCard> {
   bool isBookmarked = false;
+  bool _isHoveringReadMore = false;
 
   @override
   void initState() {
@@ -181,7 +182,7 @@ class _NewsCardState extends State<NewsCard> {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                "Security Reason Restriction",
+                "Image Not Available",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12),
               ),
@@ -337,20 +338,29 @@ class _NewsCardState extends State<NewsCard> {
               // Bottom left text for read more
               if (article.url.isNotEmpty)
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () => _launchURL(article.url),
-                    child: RichText(
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      text: TextSpan(
-                        style: const TextStyle(fontSize: 12, color: Colors.black87),
-                        children: [
-                          const TextSpan(text: 'read more at '),
-                          TextSpan(
-                            text: article.sourceName.isEmpty ? 'source' : article.sourceName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) => setState(() => _isHoveringReadMore = true),
+                    onExit: (_) => setState(() => _isHoveringReadMore = false),
+                    child: GestureDetector(
+                      onTap: () => _launchURL(article.url),
+                      child: RichText(
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        text: TextSpan(
+                          style: TextStyle(
+                            fontSize: 12, 
+                            color: _isHoveringReadMore ? Colors.blue[700] : Colors.black87,
+                            decoration: _isHoveringReadMore ? TextDecoration.underline : TextDecoration.none,
                           ),
-                        ],
+                          children: [
+                            const TextSpan(text: 'read more at '),
+                            TextSpan(
+                              text: article.sourceName.isEmpty ? 'source' : article.sourceName,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

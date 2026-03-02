@@ -11,19 +11,23 @@ class NewsService {
   // FETCH TRENDING NEWS
   // =====================================================
   Future<List<Article>> fetchTrending({int page = 1}) async {
-    // 🔹 Massive list of 25+ major global and local sources to maximize "Unlimited" results for the project.
-    // This provides Today's (Feb 28) most diverse and comprehensive real-time feed.
+    // 🔹 Expanded list of 50+ major global and local sources for a massive "Unlimited" look
     final sources = [
       'google-news', 'bbc-news', 'the-hindu', 'the-times-of-india', 
       'reuters', 'associated-press', 'abc-news', 'cnn', 'fox-news', 'al-jazeera-english',
       'the-washington-post', 'time', 'usa-today', 'the-verge', 'techcrunch', 
       'wired', 'business-insider', 'bloomberg', 'cnbc', 'fortune', 'independent',
-      'the-wall-street-journal', 'guardian', 'financial-times', 'news-com-au'
-    ].join(',');
+      'the-wall-street-journal', 'the-guardian-uk', 'financial-times', 'news-com-au',
+      'daily-mail', 'the-telegraph', 'the-hill', 'politico', 'nbc-news', 'cbs-news',
+      'msnbc', 'the-next-web', 'national-geographic', 'ign', 'entertainment-weekly',
+      'buzzfeed', 'mtv-news-uk', 'the-huffington-post', 'vice-news', 'ars-technica',
+      'mashable', 'engadget', 'techradar', 'next-big-future', 'crypto-coins-news',
+      'australian-financial-review', 'financial-post', 'cbc-news', 'medical-news-today'
+    ].take(50).join(',');
     
-    // 🔹 Increased pageSize to 50 for a "Project-Ready" bulky first load
+    // 🔹 Increased pageSize to 100 for a "Bulky" first load
     final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?sources=$sources&pageSize=50&page=$page&apiKey=$_apiKey",
+      "https://newsapi.org/v2/top-headlines?sources=$sources&pageSize=100&page=$page&apiKey=$_apiKey",
     );
 
     try {
@@ -60,14 +64,13 @@ class NewsService {
   // FETCH TOP HEADLINES BY CATEGORY
   // =====================================================
   Future<List<Article>> fetchTopHeadlines({required String category, int page = 1}) async {
-    // 'trending' is not a valid predefined NewsAPI category. Use 'general' instead.
     if (category.toLowerCase() == 'trending') {
       return fetchTrending(page: page);
     }
 
-    // 🔹 Using language=en and category logic for verified professional news sections.
+    // 🔹 Increased pageSize to 100 for "Project-Ready" bulky load
     final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?language=en&category=${Uri.encodeComponent(category)}&pageSize=50&page=$page&apiKey=$_apiKey",
+      "https://newsapi.org/v2/top-headlines?language=en&category=${Uri.encodeComponent(category)}&pageSize=100&page=$page&apiKey=$_apiKey",
     );
 
     try {
@@ -106,9 +109,9 @@ class NewsService {
   Future<List<Article>> searchNews({required String query, int page = 1}) async {
     final encodedQuery = Uri.encodeComponent(query);
 
-    // 🔹 Still 50 results per search to give that "Unlimited" look
+    // 🔹 100 results per search to give that "Unlimited" look
     final url = Uri.parse(
-      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=50&page=$page&apiKey=$_apiKey",
+      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=100&page=$page&apiKey=$_apiKey",
     );
 
     try {
