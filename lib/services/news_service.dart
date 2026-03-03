@@ -13,7 +13,7 @@ class NewsService {
   Future<List<Article>> fetchTrending({int page = 1}) async {
     // 🔹 Expanded list of 50+ major global and local sources for a massive "Unlimited" look
     final sources = [
-      'google-news', 'bbc-news', 'the-hindu', 'the-times-of-india', 
+      'bbc-news', 'the-hindu', 'the-times-of-india', 
       'reuters', 'associated-press', 'abc-news', 'cnn', 'fox-news', 'al-jazeera-english',
       'the-washington-post', 'time', 'usa-today', 'the-verge', 'techcrunch', 
       'wired', 'business-insider', 'bloomberg', 'cnbc', 'fortune', 'independent',
@@ -27,7 +27,7 @@ class NewsService {
     
     // 🔹 Increased pageSize to 100 for a "Bulky" first load
     final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?sources=$sources&pageSize=100&page=$page&apiKey=$_apiKey",
+      "https://newsapi.org/v2/top-headlines?sources=$sources&pageSize=20&page=$page&apiKey=$_apiKey",
     );
 
     try {
@@ -46,14 +46,12 @@ class NewsService {
       }
 
       List articles = data["articles"] ?? [];
+      print("Trending RAW count: ${articles.length}");
 
-      return articles
-          .where((json) =>
-              json["title"] != null &&
-              json["title"] != "[Removed]" &&
-              json["url"] != null)
-          .map<Article>((json) => Article.fromJson(json))
-          .toList();
+      final filtered = _filterArticles(articles);
+          
+      print("Trending FILTERED count: ${filtered.length}");
+      return filtered;
     } catch (e) {
       print("Trending ERROR: $e");
       rethrow;
@@ -68,39 +66,56 @@ class NewsService {
       return fetchTrending(page: page);
     }
 
-    // 🔹 Increased pageSize to 100 for "Project-Ready" bulky load
-    final url = Uri.parse(
-      "https://newsapi.org/v2/top-headlines?language=en&category=${Uri.encodeComponent(category)}&pageSize=100&page=$page&apiKey=$_apiKey",
-    );
-
     try {
-      final response = await http.get(url);
+      late http.Response response;
+      
+      // 🔹 Business uses /everything endpoint — much larger pool, enables proper multi-page loading
+      if (category.toLowerCase() == 'business') {
+        final url = Uri.parse(
+          "https://newsapi.org/v2/everything?q=business+finance+economy+market+stock&language=en&sortBy=publishedAt&pageSize=20&page=$page&apiKey=$_apiKey",
+        );
+        response = await http.get(url);
+      } else {
+        final url = Uri.parse(
+          "https://newsapi.org/v2/top-headlines?language=en&category=${Uri.encodeComponent(category)}&pageSize=20&page=$page&apiKey=$_apiKey",
+        );
+        response = await http.get(url);
+      }
 
-      print("Category STATUS: ${response.statusCode} Page: $page");
+      print("Category STATUS: ${response.statusCode} Page: $page ($category)");
 
       if (response.statusCode != 200) {
         throw Exception("Server error: ${response.statusCode}");
       }
 
       final data = jsonDecode(utf8.decode(response.bodyBytes, allowMalformed: true));
-
       if (data["status"] != "ok") {
         throw Exception(data["message"] ?? "Failed to load category news");
       }
 
       List articles = data["articles"] ?? [];
-
-      return articles
-          .where((json) =>
-              json["title"] != null &&
-              json["title"] != "[Removed]" &&
-              json["url"] != null)
-          .map<Article>((json) => Article.fromJson(json))
-          .toList();
+      final filtered = _filterArticles(articles);
+      print("Category FILTERED count: ${filtered.length} ($category page $page)");
+      return filtered;
     } catch (e) {
       print("Category ERROR: $e");
       rethrow;
     }
+  }
+
+  // 🔹 Modularized filter to avoid duplication and inconsistencies
+  List<Article> _filterArticles(List articles) {
+    return articles
+        .where((json) =>
+            json["title"] != null &&
+            json["title"] != "[Removed]" &&
+            json["url"] != null &&
+            json["urlToImage"] != null &&
+            json["urlToImage"].toString().isNotEmpty &&
+            ((json["description"] != null && json["description"].toString().trim().isNotEmpty) || 
+             (json["content"] != null && json["content"].toString().trim().isNotEmpty)))
+        .map<Article>((json) => Article.fromJson(json))
+        .toList();
   }
 
   // =====================================================
@@ -111,7 +126,7 @@ class NewsService {
 
     // 🔹 100 results per search to give that "Unlimited" look
     final url = Uri.parse(
-      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=100&page=$page&apiKey=$_apiKey",
+      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=20&page=$page&apiKey=$_apiKey",
     );
 
     try {
@@ -130,14 +145,7 @@ class NewsService {
       }
 
       List articles = data["articles"] ?? [];
-
-      return articles
-          .where((json) =>
-              json["title"] != null &&
-              json["title"] != "[Removed]" &&
-              json["url"] != null)
-          .map<Article>((json) => Article.fromJson(json))
-          .toList();
+      return _filterArticles(articles);
     } catch (e) {
       print("Search ERROR: $e");
       rethrow;

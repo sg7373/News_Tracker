@@ -36,15 +36,16 @@ class NewsProvider with ChangeNotifier {
     Future.microtask(() => notifyListeners());
 
     try {
-      _articles = await _newsService.fetchTopHeadlines(category: category, page: 1);
+      final news = await _newsService.fetchTopHeadlines(category: category, page: 1);
+      _articles = _deduplicate(news);
       _currentCategory = category;
       if (_articles.isEmpty) _hasMore = false;
     } catch (e) {
       final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
+      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit') || errorStr.contains('426') || errorStr.contains('upgrade')) {
         _isMockMode = true;
         _articles = _getMockArticles();
-        _error = "API quota exhausted (Error 429). Switched to premium mock data for demonstration.";
+        _error = "API limit reached for free plan (Error 426/429). Showing demonstration data.";
       } else {
         _error = e.toString();
         _articles = [];
@@ -60,7 +61,8 @@ class NewsProvider with ChangeNotifier {
     if (_isMoreLoading || !_hasMore || _isMockMode) return;
 
     // 🔹 Increased limit to 3 pages (up to 300 articles) for a truly "Infinite" feel for the interviewer
-    if (_currentPage >= 3) {
+    // 🔹 NewsAPI Free Plan: Max 100 total articles. With pageSize 20, we can fetch exactly 5 pages.
+    if (_currentPage >= 5) {
       _hasMore = false;
       notifyListeners();
       return;
@@ -82,11 +84,32 @@ class NewsProvider with ChangeNotifier {
       if (nextBatch.isEmpty) {
         _hasMore = false;
       } else {
-        _articles.addAll(nextBatch);
+        // Filter out articles already in the list to prevent scrolling duplicates
+        final uniqueNewArticles = nextBatch.where((newArt) {
+          final isDup = _articles.any((oldArt) => 
+            (oldArt.url.isNotEmpty && oldArt.url == newArt.url) || 
+            (oldArt.title.isNotEmpty && oldArt.title == newArt.title)
+          );
+          return !isDup;
+        }).toList();
+        
+        if (uniqueNewArticles.isNotEmpty) {
+          _articles.addAll(uniqueNewArticles);
+        } else if (_currentPage < 5) {
+          // If all articles in this batch were duplicates, automatically try to fetch the next page
+          // to find fresh content without the user needing to click again.
+          _isMoreLoading = false; 
+          return loadMore();
+        }
+        
+        // Always stop after page 5 for free plan compliance
+        if (_currentPage >= 5) {
+          _hasMore = false;
+        }
       }
     } catch (e) {
       final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
+      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit') || errorStr.contains('426') || errorStr.contains('upgrade')) {
          _hasMore = false;
          _isMockMode = true;
       }
@@ -118,14 +141,14 @@ class NewsProvider with ChangeNotifier {
 
     try {
       final result = await _newsService.searchNews(query: query, page: 1);
-      _articles = result;
+      _articles = _deduplicate(result);
       if (_articles.isEmpty) _hasMore = false;
     } catch (e) {
       final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
+      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit') || errorStr.contains('426') || errorStr.contains('upgrade')) {
         _isMockMode = true;
         _articles = _getMockArticles();
-        _error = "Search limit reached. Showing featured results.";
+        _error = "Search limit reached for free plan. Showing featured results.";
       } else {
         _error = e.toString();
         _articles = [];
@@ -134,6 +157,17 @@ class NewsProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  List<Article> _deduplicate(List<Article> articles) {
+    final seen = <String>{};
+    return articles.where((article) {
+      // Use URL as primary key, fallback to title
+      final key = article.url.isNotEmpty ? article.url : article.title;
+      if (key.isEmpty || seen.contains(key)) return false;
+      seen.add(key);
+      return true;
+    }).toList();
   }
 
   List<Article> _getMockArticles() {
