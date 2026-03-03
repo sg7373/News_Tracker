@@ -34,9 +34,25 @@ class AuthService {
     }
   }
 
-  // Sign in with email and password
-  Future<User?> signInWithEmail(String email, String password) async {
+  // Sign in with email or username
+  Future<User?> signIn(String identifier, String password) async {
     try {
+      String email = identifier;
+      
+      // If it doesn't look like an email, try to find the email by username
+      if (!identifier.contains('@')) {
+        final query = await _firestore
+            .collection('users')
+            .where('username', isEqualTo: identifier.toLowerCase().trim())
+            .limit(1)
+            .get();
+
+        if (query.docs.isEmpty) {
+          throw Exception("Username not found");
+        }
+        email = query.docs.first.get('email');
+      }
+
       UserCredential result = await _auth.signInWithEmailAndPassword(
           email: email, password: password);
       return result.user;
@@ -46,35 +62,51 @@ class AuthService {
     }
   }
 
-  // Register with email and password
-  Future<User?> registerWithEmail(String email, String password) async {
+  // Register with detailed information
+  Future<User?> register({
+    required String email,
+    required String password,
+    required String name,
+    required String username,
+    required String phone,
+  }) async {
     try {
+      // 1. Check if username is already taken
+      final usernameCheck = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username.toLowerCase().trim())
+          .limit(1)
+          .get();
+
+      if (usernameCheck.docs.isNotEmpty) {
+        throw Exception("Username is already taken");
+      }
+
+      // 2. Create the user in Firebase Auth
       UserCredential result = await _auth.createUserWithEmailAndPassword(
           email: email, password: password);
       
-      if (result.user != null) {
-        await _createUserInFirestore(result.user!);
+      final user = result.user;
+      if (user != null) {
+        // 3. Store additional data in Firestore
+        await _firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': email,
+          'displayName': name,
+          'username': username.toLowerCase().trim(),
+          'phone': phone,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isPremium': false,
+        });
+
+        // 4. Update the Auth profile displayName
+        await user.updateDisplayName(name);
       }
       
-      return result.user;
+      return user;
     } catch (e) {
       debugPrint("Register Error: $e");
       rethrow;
-    }
-  }
-
-  // Create user document in Firestore
-  Future<void> _createUserInFirestore(User user) async {
-    try {
-      await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'email': user.email,
-        'createdAt': FieldValue.serverTimestamp(),
-        'displayName': user.displayName ?? 'New User',
-        'isPremium': false,
-      });
-    } catch (e) {
-      debugPrint("Store User Error: $e");
     }
   }
 
@@ -100,10 +132,22 @@ class AuthService {
       );
 
       final UserCredential result = await _auth.signInWithCredential(credential);
-      if (result.user != null) {
-        await _createUserInFirestore(result.user!);
+      final user = result.user;
+      if (user != null) {
+        // 🔹 For Google users, create a default username based on their UID if it doesn't exist
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        if (!doc.exists) {
+          await _firestore.collection('users').doc(user.uid).set({
+            'uid': user.uid,
+            'email': user.email,
+            'createdAt': FieldValue.serverTimestamp(),
+            'displayName': user.displayName ?? 'New User',
+            'username': 'user_${user.uid.substring(0, 5)}', // Temporary unique username
+            'isPremium': false,
+          });
+        }
       }
-      return result.user;
+      return user;
     } catch (e) {
       debugPrint("Google Sign-In Error: $e");
       rethrow;
@@ -113,10 +157,33 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut();
-      return await _auth.signOut();
+      if (await _googleSignIn.isSignedIn()) {
+        await _googleSignIn.signOut();
+      }
+      await _auth.signOut();
     } catch (e) {
       debugPrint("SignOut Error: $e");
+      rethrow;
+    }
+  }
+
+  // Delete user account
+  Future<void> deleteUserAccount() async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        await _firestore.collection('users').doc(user.uid).delete();
+        final bookmarks = await _firestore.collection('users').doc(user.uid).collection('bookmarks').get();
+        for (var doc in bookmarks.docs) {
+          await doc.reference.delete();
+        }
+        await user.delete();
+        if (await _googleSignIn.isSignedIn()) {
+          await _googleSignIn.signOut();
+        }
+      }
+    } catch (e) {
+      debugPrint("Delete Account Error: $e");
       rethrow;
     }
   }

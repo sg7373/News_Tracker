@@ -5,39 +5,12 @@ import '../services/auth_service.dart';
 import '../widgets/news_card.dart';
 import 'login_screen.dart';
 
-class BookmarksScreen extends StatefulWidget {
+class BookmarksScreen extends StatelessWidget {
   const BookmarksScreen({super.key});
 
   @override
-  State<BookmarksScreen> createState() => _BookmarksScreenState();
-}
-
-class _BookmarksScreenState extends State<BookmarksScreen> {
-  List<Article> _bookmarks = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    if (AuthService().currentUser != null) {
-      _loadBookmarks();
-    } else {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadBookmarks() async {
-    final raw = await BookmarkService.getBookmarks();
-    if (mounted) {
-      setState(() {
-        _bookmarks = raw.map((e) => Article.fromJson(e)).toList();
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // If not logged in, show the login prompt
     if (AuthService().currentUser == null) {
       return Center(
         child: Padding(
@@ -53,22 +26,21 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'To save and sync your bookmarks across devices, please sign in to your account.',
+                'Sign in to save and sync your bookmarks across all your devices.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
-                },
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 32, vertical: 12),
                 ),
                 child: const Text('Log In / Sign Up'),
               ),
@@ -78,36 +50,68 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
       );
     }
 
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.red));
-    }
+    // Stream-based UI — automatically reflects Firestore changes in real-time
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: BookmarkService.bookmarksStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.red),
+          );
+        }
 
-    if (_bookmarks.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.bookmark_border, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'No bookmarks yet',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Tap the bookmark icon on any article to save it.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading bookmarks:\n${snapshot.error}',
               textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
             ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _bookmarks.length,
-      itemBuilder: (context, index) => NewsCard(article: _bookmarks[index]),
+        final bookmarks = snapshot.data ?? [];
+
+        if (bookmarks.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.bookmark_border, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No bookmarks yet',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Tap the bookmark icon on any article to save it.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
+        final articles = bookmarks
+            .map((e) {
+              try {
+                return Article.fromJson(e);
+              } catch (_) {
+                return null;
+              }
+            })
+            .whereType<Article>()
+            .toList();
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: articles.length,
+          itemBuilder: (context, index) =>
+              NewsCard(article: articles[index]),
+        );
+      },
     );
   }
 }

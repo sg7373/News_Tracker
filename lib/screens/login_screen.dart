@@ -9,11 +9,26 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController(); // Email or Username
+  final _emailController = TextEditingController();      // Only for signup
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _authService = AuthService();
   bool _isLoading = false;
   bool _isLogin = true;
+
+  @override
+  void dispose() {
+    _identifierController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    _usernameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
 
   void _showErrorSnackBar(Object e) {
     String errorMessage = e.toString();
@@ -48,29 +63,57 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleAuth() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+    if (_isLogin) {
+      // ─── LOGIN LOGIC ──────────────────────────────────────────────────────
+      final identifier = _identifierController.text.trim();
+      final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      if (_isLogin) {
-        await _authService.signInWithEmail(email, password);
-      } else {
-        await _authService.registerWithEmail(email, password);
+      if (identifier.isEmpty || password.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please fill in all fields')),
+        );
+        return;
       }
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      _showErrorSnackBar(e);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+
+      setState(() => _isLoading = true);
+      try {
+        await _authService.signIn(identifier, password);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        _showErrorSnackBar(e);
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } else {
+      // ─── SIGNUP LOGIC ─────────────────────────────────────────────────────
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      final name = _nameController.text.trim();
+      final username = _usernameController.text.trim();
+      final phone = _phoneController.text.trim();
+
+      if (email.isEmpty || password.isEmpty || name.isEmpty || username.isEmpty || phone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please fill in all fields')),
+        );
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      try {
+        await _authService.register(
+          email: email,
+          password: password,
+          name: name,
+          username: username,
+          phone: phone,
+        );
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        _showErrorSnackBar(e);
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -103,24 +146,57 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.grey[600],
                 ),
               ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 40),
               
-              // Email Field
-              _buildTextField(
-                controller: _emailController,
-                label: 'Email Address',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-              
-              // Password Field
-              _buildTextField(
-                controller: _passwordController,
-                label: 'Password',
-                icon: Icons.lock_outline,
-                isPassword: true,
-              ),
+              if (_isLogin) ...[
+                // ─── LOGIN FIELDS ───────────────────────────────────────────
+                _buildTextField(
+                  controller: _identifierController,
+                  label: 'Email or Username',
+                  icon: Icons.person_outline,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  controller: _passwordController,
+                  label: 'Password',
+                  icon: Icons.lock_outline,
+                  isPassword: true,
+                ),
+              ] else ...[
+                // ─── SIGNUP FIELDS ──────────────────────────────────────────
+                _buildTextField(
+                  controller: _nameController,
+                  label: 'Full Name',
+                  icon: Icons.badge_outlined,
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _usernameController,
+                  label: 'Username',
+                  icon: Icons.alternate_email,
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _emailController,
+                  label: 'Email Address',
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _phoneController,
+                  label: 'Phone Number',
+                  icon: Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _passwordController,
+                  label: 'Password',
+                  icon: Icons.lock_outline,
+                  isPassword: true,
+                ),
+              ],
               
               const SizedBox(height: 40),
               
@@ -173,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _isLoading ? null : _handleGoogleSignIn,
                   icon: Image.network(
-                    'https://auth.expo.io/@community/google.png', // Reliable PNG logo
+                    'https://auth.expo.io/@community/google.png',
                     height: 20,
                     errorBuilder: (context, error, stackTrace) => const Icon(Icons.login, size: 20),
                   ),
@@ -229,10 +305,11 @@ class _LoginScreenState extends State<LoginScreen> {
           controller: controller,
           obscureText: isPassword,
           keyboardType: keyboardType,
+          style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: Colors.grey[600]),
+            prefixIcon: Icon(icon, color: Colors.grey[600], size: 20),
             filled: true,
-            fillColor: Colors.grey[100],
+            fillColor: Colors.grey[500]!.withOpacity(0.05),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
