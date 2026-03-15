@@ -29,17 +29,10 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  // ─── Strict keyword relevance filter ────────────────────────
-  // Keeps only articles where the query appears in title OR description.
   List<Article> _filterByRelevance(List<Article> articles, String query) {
-    final terms = query.toLowerCase().split(' ').where((t) => t.length > 1).toList();
-    if (terms.isEmpty) return articles;
-
-    return articles.where((a) {
-      final text = '${a.title} ${a.description ?? ''}'.toLowerCase();
-      // Article must contain at least ONE of the search terms
-      return terms.any((term) => text.contains(term));
-    }).toList();
+    // Relying on NewsAPI's inherent search matching for accurate and plentiful results.
+    // The previous aggressive string match was dropping valid API responses needlessly.
+    return articles;
   }
 
   Future<void> _search() async {

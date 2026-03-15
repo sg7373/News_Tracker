@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/match.dart';
 import '../services/sports_service.dart';
@@ -17,45 +18,67 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   bool _isLoading = true;
   String? _error;
   bool _isMockMode = false;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _fetchScores();
+    // Auto-refresh scores every 10 seconds for closer to real-time updates
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted && !_isLoading) {
+        _fetchScores(isBackgroundRefresh: true);
+      }
+    });
   }
 
-  Future<void> _fetchScores() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-      _isMockMode = false;
-    });
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchScores({bool isBackgroundRefresh = false}) async {
+    if (!isBackgroundRefresh) {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+          _isMockMode = false;
+        });
+      }
+    }
 
     try {
       final results = await Future.wait([
         _sportsService.fetchFootballMatches(),
         _sportsService.fetchCricketMatches(),
       ]);
-      setState(() {
-        _footballMatches = results[0];
-        _cricketMatches = results[1];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _footballMatches = results[0];
+          _cricketMatches = results[1];
+          _isLoading = false;
+          _error = null;
+        });
+      }
     } catch (e) {
-      final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
-        setState(() {
-          _isMockMode = true;
-          _footballMatches = _sportsService.getMockFootballMatches();
-          _cricketMatches = _sportsService.getMockCricketMatches();
-          _error = "Free API Limit Exceeded. Showing Mock Data.";
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _error = e.toString();
-          _isLoading = false;
-        });
+      if (mounted) {
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
+          setState(() {
+            _isMockMode = true;
+            _footballMatches = _sportsService.getMockFootballMatches();
+            _cricketMatches = _sportsService.getMockCricketMatches();
+            _error = "Free API Limit Exceeded. Showing Mock Data.";
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            if (!isBackgroundRefresh) _error = e.toString();
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -192,7 +215,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   Widget _matchCard(MatchScore match) {
     final title = match.venue.isNotEmpty ? match.venue : match.sport;
     final badgeColor = _getBadgeColor(match.matchType);
-    final statusColor = match.isLive ? Colors.orange.shade800 : Colors.blue.shade600;
+    final statusColor = match.isLive ? Colors.red.shade600 : Colors.blue.shade600;
 
     return Container(
       width: 300,
@@ -258,15 +281,22 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           // Status line
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Text(
-              match.isLive ? 'Live · ${match.status}' : (match.date.isNotEmpty ? '${match.date} · ${match.status}' : match.status),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: statusColor,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Row(
+              children: [
+                if (match.isLive) _PulseDot(),
+                Expanded(
+                  child: Text(
+                    match.isLive ? 'Live · ${match.status}' : (match.date.isNotEmpty ? '${match.date} · ${match.status}' : match.status),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           
@@ -326,18 +356,49 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         const SizedBox(width: 12),
         if (score.isNotEmpty)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 80),
+            constraints: const BoxConstraints(maxWidth: 130),
             child: Text(
               score,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
       ],
+    );
+  }
+}
+
+class _PulseDot extends StatefulWidget {
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+
+class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+  }
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Container(
+        width: 8,
+        height: 8,
+        margin: const EdgeInsets.only(right: 6),
+        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+      ),
     );
   }
 }

@@ -49,18 +49,33 @@ class MatchScore {
     final String teamA = teams.isNotEmpty ? teams[0].toString() : (json['name']?.toString().split(' vs ').first ?? 'Team A');
     final String teamB = teams.length > 1 ? teams[1].toString() : (json['name']?.toString().split(' vs ').last ?? 'Team B');
 
-    // CricAPI v1 returns score as a List of objects: [{r, w, o, inning}, ...]
     final List scoreList = json['score'] ?? [];
-    String scoreStr = '-';
+    String scoreA = '';
+    String scoreB = '';
+
     if (scoreList.isNotEmpty) {
-      scoreStr = scoreList.map((s) {
+      for (var s in scoreList) {
         final inning = s['inning']?.toString() ?? '';
         final r = s['r']?.toString() ?? '0';
         final w = s['w']?.toString() ?? '0';
         final o = s['o']?.toString() ?? '0';
-        return '$inning: $r/$w ($o ov)';
-      }).join('  |  ');
+        final formattedScore = '$r/$w ($o)';
+        
+        if (teamA.isNotEmpty && inning.toLowerCase().contains(teamA.toLowerCase())) {
+          scoreA = scoreA.isEmpty ? formattedScore : '$scoreA, $formattedScore';
+        } else if (teamB.isNotEmpty && inning.toLowerCase().contains(teamB.toLowerCase())) {
+          scoreB = scoreB.isEmpty ? formattedScore : '$scoreB, $formattedScore';
+        } else {
+          if (scoreA.isEmpty) {
+            scoreA = formattedScore;
+          } else {
+            scoreB = scoreB.isEmpty ? formattedScore : '$scoreB, $formattedScore';
+          }
+        }
+      }
     }
+
+    String scoreStr = '${scoreA.isNotEmpty ? scoreA : '-'} vs ${scoreB.isNotEmpty ? scoreB : '-'}';
 
     final bool isLive = json['matchStarted'] == true && json['matchEnded'] != true;
     final String dateStr = json['date'] ?? json['dateTimeGMT'] ?? '';

@@ -79,11 +79,10 @@ class NewsService {
     try {
       late http.Response response;
       
-      // 🔹 Business uses /everything endpoint — much larger pool, enables proper multi-page loading
+      // 🔹 Business uses an un-restrictive fetch
       if (category.toLowerCase() == 'business') {
-        final today = _todayDate();
         final url = Uri.parse(
-          "https://newsapi.org/v2/everything?q=business+finance+economy+market+stock&language=en&sortBy=publishedAt&from=$today&pageSize=20&page=$page&apiKey=$_apiKey",
+          "https://newsapi.org/v2/top-headlines?country=us&category=business&pageSize=20&page=$page&apiKey=$_apiKey",
         );
         response = await http.get(url);
       } else {
@@ -136,9 +135,8 @@ class NewsService {
     final encodedQuery = Uri.encodeComponent(query);
 
     // 🔹 100 results per search to give that "Unlimited" look
-    final today = _todayDate();
     final url = Uri.parse(
-      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&from=$today&pageSize=20&page=$page&apiKey=$_apiKey",
+      "https://newsapi.org/v2/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=20&page=$page&apiKey=$_apiKey",
     );
 
     try {
