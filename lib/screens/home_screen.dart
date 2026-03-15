@@ -215,9 +215,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       /// 🔹 MODERN APP BAR
       appBar: AppBar(
-        title: const Text(
-          'News Tracker',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Image.asset(
+          'assets/images/Logo.jpeg',
+          height: 40,
+          fit: BoxFit.contain,
         ),
         centerTitle: true,
         elevation: 0,

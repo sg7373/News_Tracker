@@ -123,43 +123,27 @@ class _NewsCardState extends State<NewsCard> {
       return _buildPlaceholder();
     }
 
-    // Handle protocol-relative URLs (e.g., //example.com/image.jpg)
+    // Normalise protocol-relative URLs
     String imageUrl = url;
     if (url.startsWith('//')) {
       imageUrl = 'https:$url';
     }
 
-    // Use CORS proxy only for external HTTP/HTTPS URLs on Web
-    final finalUrl = imageUrl.startsWith('http') 
-        ? "https://corsproxy.io/?${Uri.encodeComponent(imageUrl)}" 
-        : imageUrl;
+    if (!imageUrl.startsWith('http')) {
+      return _buildPlaceholder();
+    }
 
-    return Image.network(
-      finalUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Center(
-          child: CircularProgressIndicator(
-            value: loadingProgress.expectedTotalBytes != null
-                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                : null,
-            strokeWidth: 2,
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        // If proxy fails, try direct URL as a last resort
-        return Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-          errorBuilder: (_, __, ___) => _buildPlaceholder(),
-        );
-      },
+    // 3-tier proxy fallback:
+    //  1. images.weserv.nl  — image-optimised CDN proxy, most reliable
+    //  2. corsproxy.io      — generic CORS proxy
+    //  3. direct URL        — last resort (may be blocked by CORS)
+    final weservUrl  = 'https://images.weserv.nl/?url=${Uri.encodeComponent(imageUrl)}&w=800&output=jpg&q=80';
+    final corsUrl    = 'https://corsproxy.io/?${Uri.encodeComponent(imageUrl)}';
+    final directUrl  = imageUrl;
+
+    return _ProxyImage(
+      proxies: [weservUrl, corsUrl, directUrl],
+      placeholder: _buildPlaceholder(),
     );
   }
 
@@ -397,3 +381,61 @@ class _NewsCardState extends State<NewsCard> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-proxy image widget: tries each proxy URL in order, shows placeholder
+// only after ALL options are exhausted.
+// ─────────────────────────────────────────────────────────────────────────────
+class _ProxyImage extends StatefulWidget {
+  final List<String> proxies;
+  final Widget placeholder;
+
+  const _ProxyImage({required this.proxies, required this.placeholder});
+
+  @override
+  State<_ProxyImage> createState() => _ProxyImageState();
+}
+
+class _ProxyImageState extends State<_ProxyImage> {
+  int _proxyIndex = 0;
+
+  // ✅ Defer setState to AFTER the current build frame to avoid
+  // "setState() called during build" crash from Image.errorBuilder.
+  void _onError() {
+    if (!mounted) return;
+    if (_proxyIndex < widget.proxies.length - 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _proxyIndex++);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_proxyIndex >= widget.proxies.length) return widget.placeholder;
+
+    final url = widget.proxies[_proxyIndex];
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: progress.expectedTotalBytes != null
+                ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                : null,
+            strokeWidth: 2,
+            color: Colors.red,
+          ),
+        );
+      },
+      errorBuilder: (_, __, ___) {
+        _onError(); // deferred — safe to call during build
+        return widget.placeholder;
+      },
+    );
+  }
+}

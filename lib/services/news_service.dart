@@ -12,17 +12,21 @@ class NewsService {
   // =====================================================
   Future<List<Article>> fetchTrending({int page = 1}) async {
     // 🔹 Expanded list of 50+ major global and local sources for a massive "Unlimited" look
+    // ⚠️ 'the-times-of-india' removed — blocks image hotlinking (403/CORS errors on images)
+    // Added open-image sources that work well with Flutter Web
     final sources = [
-      'bbc-news', 'the-hindu', 'the-times-of-india', 
-      'reuters', 'associated-press', 'abc-news', 'cnn', 'fox-news', 'al-jazeera-english',
+      'bbc-news', 'the-hindu', 
+      'reuters', 'associated-press', 'abc-news', 'cnn', 'al-jazeera-english',
       'the-washington-post', 'time', 'usa-today', 'the-verge', 'techcrunch', 
       'wired', 'business-insider', 'bloomberg', 'cnbc', 'fortune', 'independent',
-      'the-wall-street-journal', 'the-guardian-uk', 'financial-times', 'news-com-au',
-      'daily-mail', 'the-telegraph', 'the-hill', 'politico', 'nbc-news', 'cbs-news',
+      'the-wall-street-journal', 'the-guardian-uk', 'news-com-au',
+      'the-telegraph', 'the-hill', 'politico', 'nbc-news', 'cbs-news',
       'msnbc', 'the-next-web', 'national-geographic', 'ign', 'entertainment-weekly',
-      'buzzfeed', 'mtv-news-uk', 'the-huffington-post', 'vice-news', 'ars-technica',
-      'mashable', 'engadget', 'techradar', 'next-big-future', 'crypto-coins-news',
-      'australian-financial-review', 'financial-post', 'cbc-news', 'medical-news-today'
+      'the-huffington-post', 'vice-news', 'ars-technica',
+      'mashable', 'engadget', 'techradar', 'crypto-coins-news',
+      'financial-post', 'cbc-news', 'medical-news-today',
+      // Open-image sources replacing TOI
+      'axios', 'newsweek', 'new-scientist', 'the-sport-bible',
     ].take(50).join(',');
     
     // 🔹 Increased pageSize to 100 for a "Bulky" first load
