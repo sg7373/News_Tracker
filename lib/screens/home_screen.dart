@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/news_provider.dart';
 import '../widgets/news_card.dart';
+import '../services/update_service.dart';
 import 'live_score.dart';
 import 'search_screen.dart';
 import 'profile_screen.dart';
@@ -48,6 +49,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // 🔹 Auto-refresh current category news every 15 minutes (to stay within NewsAPI Free Tier limits)
     _timer = Timer.periodic(const Duration(minutes: 15), (timer) {
       newsProvider.fetchNews(category: newsProvider.currentCategory);
+    });
+
+    // 🔹 Check for app updates on launch (mobile only)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.checkForUpdate(context);
     });
   }
 

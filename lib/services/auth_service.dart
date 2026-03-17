@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '385757213775-24rrjbareavs116oq6v2opgfd4i90869.apps.googleusercontent.com',
+    serverClientId: '385757213775-24rrjbareavs116oq6v2opgfd4i90869.apps.googleusercontent.com',
   );
 
   // Use a getter that safely checks for an initialized app
