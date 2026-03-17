@@ -3,10 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: '385757213775-24rrjbareavs116oq6v2opgfd4i90869.apps.googleusercontent.com',
+  );
 
   // Use a getter that safely checks for an initialized app
   FirebaseAuth get _auth {
@@ -122,16 +125,25 @@ class AuthService {
   // Sign in with Google
   Future<User?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; // User cancelled
+      final UserCredential result;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      if (kIsWeb) {
+        // Bypassing google_sign_in package for web to avoid People API errors
+        GoogleAuthProvider authProvider = GoogleAuthProvider();
+        result = await _auth.signInWithPopup(authProvider);
+      } else {
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) return null; // User cancelled
 
-      final UserCredential result = await _auth.signInWithCredential(credential);
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        result = await _auth.signInWithCredential(credential);
+      }
+
       final user = result.user;
       if (user != null) {
         // 🔹 For Google users, create a default username based on their UID if it doesn't exist
@@ -157,8 +169,13 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
-      if (await _googleSignIn.isSignedIn()) {
-        await _googleSignIn.signOut();
+      try {
+        if (await _googleSignIn.isSignedIn()) {
+          await _googleSignIn.disconnect();
+          await _googleSignIn.signOut();
+        }
+      } catch (e) {
+        debugPrint("Google SignOut Error (Ignored): $e");
       }
       await _auth.signOut();
     } catch (e) {
