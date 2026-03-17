@@ -306,6 +306,12 @@ class _LoginScreenState extends State<LoginScreen> {
           obscureText: isPassword,
           keyboardType: keyboardType,
           style: const TextStyle(fontSize: 15),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) {
+            if (!_isLoading) {
+              _handleAuth();
+            }
+          },
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey[600], size: 20),
             filled: true,
