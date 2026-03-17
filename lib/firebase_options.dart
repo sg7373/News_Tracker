@@ -28,10 +28,10 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCN1aU-Ncj__eROfpE0TBuvkBKU1S69pk4',
-    appId: '1:805318663328:android:13d747edba96dc0f993dc5',
-    messagingSenderId: '805318663328',
-    projectId: 'news-app-f2e97',
-    storageBucket: 'news-app-f2e97.firebasestorage.app',
+    apiKey: 'AIzaSyADOxNpH9zwmEPdKfCzT1gb4_2TpZ9fRsE',
+    appId: '1:385757213775:android:ba96dc0f993dc55896e65f',
+    messagingSenderId: '385757213775',
+    projectId: 'news-web-7c134',
+    storageBucket: 'news-web-7c134.firebasestorage.app',
   );
 }
