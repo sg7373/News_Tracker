@@ -112,7 +112,7 @@ class _NewsCardState extends State<NewsCard> {
     if (urlString.isEmpty) return;
     final Uri url = Uri.parse(urlString);
     try {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+      await launchUrl(url, mode: LaunchMode.inAppWebView);
     } catch (_) {
       _showSnackBar("Could not open link");
     }
