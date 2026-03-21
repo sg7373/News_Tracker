@@ -1,4 +1,4 @@
-package com.example.inshorts_clone
+package com.example.news_tracker
 
 import io.flutter.embedding.android.FlutterActivity
 
