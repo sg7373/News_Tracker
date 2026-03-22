@@ -1,4 +1,4 @@
-# inshorts_clone
+# News Tracker
 
 A new Flutter project.
 

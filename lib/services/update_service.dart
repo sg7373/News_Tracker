@@ -9,7 +9,7 @@ class UpdateService {
   // ─── IMPORTANT: Replace this URL with YOUR own after pushing version.json to GitHub ───
   // Format: https://raw.githubusercontent.com/<YOUR_GITHUB_USERNAME>/<REPO_NAME>/main/version.json
   static const String _versionFileUrl =
-      'https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/inshorts_clone/main/version.json';
+      'https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/news_tracker/main/version.json';
 
   /// Compare two version strings like "1.2.3"
   static bool _isNewerVersion(String latest, String current) {

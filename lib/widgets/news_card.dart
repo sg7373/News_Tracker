@@ -193,7 +193,7 @@ class _NewsCardState extends State<NewsCard> {
     
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 850), // Matches desktop Inshorts view
+        constraints: const BoxConstraints(maxWidth: 850), // Matches desktop News Tracker view
         child: Container(
           height: isMobile ? screenHeight * 0.85 : 300, // Reduced height for the horizontal card on desktop
           margin: EdgeInsets.symmetric(
@@ -285,7 +285,7 @@ class _NewsCardState extends State<NewsCard> {
                 style: const TextStyle(fontSize: 12, color: Color(0xff808290)),
                 children: [
                   const TextSpan(
-                    text: 'short',
+                    text: 'news',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   const TextSpan(text: ' by '),

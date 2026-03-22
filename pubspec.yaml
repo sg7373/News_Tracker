@@ -1,5 +1,5 @@
 name: news_tracker
-description: A simplified Inshorts-like news app using Flutter and NewsAPI
+description: A simplified brief news app using Flutter and NewsAPI
 publish_to: "none"
 version: 1.0.0+1
 
