@@ -8,8 +8,6 @@ class MatchScore {
   final String date;
   final String venue;
   final bool isLive;
-  final String teamALogo;
-  final String teamBLogo;
 
   MatchScore({
     required this.teamA,
@@ -21,8 +19,6 @@ class MatchScore {
     this.date = '',
     this.venue = '',
     this.isLive = false,
-    this.teamALogo = '',
-    this.teamBLogo = '',
   });
 
   factory MatchScore.fromFootball(Map<String, dynamic> json) {
@@ -37,8 +33,6 @@ class MatchScore {
     return MatchScore(
       teamA: teams['home']?['name'] ?? 'Home Team',
       teamB: teams['away']?['name'] ?? 'Away Team',
-      teamALogo: teams['home']?['logo'] ?? '',
-      teamBLogo: teams['away']?['logo'] ?? '',
       score: '$homeGoals - $awayGoals',
       sport: 'football',
       status: statusMap['long'] ?? 'Live',
@@ -52,24 +46,8 @@ class MatchScore {
   factory MatchScore.fromCricket(Map<String, dynamic> json) {
     // CricAPI v1 returns teams as a List of strings e.g. ["India", "Australia"]
     final List teams = json['teams'] ?? [];
-    final String fullName = json['name']?.toString() ?? '';
-    
-    String teamA = 'Team A';
-    String teamB = 'Team B';
-
-    if (teams.isNotEmpty) {
-      teamA = teams[0].toString();
-      if (teams.length > 1) teamB = teams[1].toString();
-    } else if (fullName.isNotEmpty) {
-      // Handle "NZ vs SA" or "NZ v SA"
-      final parts = fullName.contains(' vs ') ? fullName.split(' vs ') : fullName.split(' v ');
-      if (parts.length >= 2) {
-        teamA = parts[0].split(',').first.trim();
-        teamB = parts[1].split(',').first.trim();
-      } else {
-        teamA = fullName;
-      }
-    }
+    final String teamA = teams.isNotEmpty ? teams[0].toString() : (json['name']?.toString().split(' vs ').first ?? 'Team A');
+    final String teamB = teams.length > 1 ? teams[1].toString() : (json['name']?.toString().split(' vs ').last ?? 'Team B');
 
     final List scoreList = json['score'] ?? [];
     String scoreA = '';
@@ -99,52 +77,18 @@ class MatchScore {
 
     String scoreStr = '${scoreA.isNotEmpty ? scoreA : '-'} vs ${scoreB.isNotEmpty ? scoreB : '-'}';
 
-    // If scoreStr is still empty/placeholder, try extracting from status
-    final String status = json['status'] ?? '';
-    if ((scoreA.isEmpty && scoreB.isEmpty) || scoreStr.contains('- vs -')) {
-      // Regex to find things like "SA 120/3" or "120/3 (15.2)"
-      final scoreRegex = RegExp(r'(\d+/\d+(\s*\(\d+(\.\d+)?\))?)');
-      final matches = scoreRegex.allMatches(status).toList();
-      if (matches.isNotEmpty) {
-        scoreStr = status; // Use the descriptive status as the score if we found score-like patterns
-      }
-    }
-
     final bool isLive = json['matchStarted'] == true && json['matchEnded'] != true;
     final String dateStr = json['date'] ?? json['dateTimeGMT'] ?? '';
     final String titleStr = json['name'] ?? '';
 
-    // Extract logos
-    final List teamInfo = json['teamInfo'] ?? [];
-    String logoA = '';
-    String logoB = '';
-
-    for (var info in teamInfo) {
-      final name = info['name']?.toString() ?? '';
-      if (name.toLowerCase() == teamA.toLowerCase()) {
-        logoA = info['img'] ?? '';
-      } else if (name.toLowerCase() == teamB.toLowerCase()) {
-        logoB = info['img'] ?? '';
-      }
-    }
-    // Fallback if name matching fails, just take first two
-    if (logoA.isEmpty && teamInfo.isNotEmpty) logoA = teamInfo[0]['img'] ?? '';
-    if (logoB.isEmpty && teamInfo.length > 1) logoB = teamInfo[1]['img'] ?? '';
-
     return MatchScore(
       teamA: teamA,
       teamB: teamB,
-      teamALogo: logoA,
-      teamBLogo: logoB,
       score: scoreStr,
       sport: 'cricket',
       status: json['status'] ?? (isLive ? 'Live' : (json['matchEnded'] == true ? 'Finished' : 'Upcoming')),
       matchType: json['matchType']?.toString().toUpperCase() ?? 'T20',
-      date: (dateStr.isNotEmpty && dateStr.contains('T')) 
-          ? (DateTime.tryParse(dateStr)?.toLocal().toString().length ?? 0) >= 16 
-              ? DateTime.tryParse(dateStr)!.toLocal().toString().substring(0, 16) 
-              : dateStr 
-          : dateStr,
+      date: dateStr.isNotEmpty && dateStr.contains('T') ? DateTime.tryParse(dateStr)?.toLocal().toString().substring(0, 16) ?? dateStr : dateStr,
       venue: json['venue'] ?? titleStr.split(',').last.trim(),
       isLive: isLive,
     );
