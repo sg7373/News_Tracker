@@ -50,35 +50,57 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     }
 
     try {
+      bool limitHit = false;
+      String? limitMsg;
+
+      // Fetch both in parallel but catch errors independently
       final results = await Future.wait([
-        _sportsService.fetchFootballMatches(),
-        _sportsService.fetchCricketMatches(),
+        _sportsService.fetchFootballMatches().catchError((e) {
+          final err = e.toString().toLowerCase();
+          if (err.contains('limit') || err.contains('reached') || err.contains('rate')) {
+            limitHit = true;
+            limitMsg = "Football API Limit Reached (Free Plan).";
+          } else {
+            setState(() => _error = (_error == null) ? "Football: $e" : "$_error\nFootball: $e");
+          }
+          return <MatchScore>[];
+        }),
+        _sportsService.fetchCricketMatches().catchError((e) {
+          final err = e.toString().toLowerCase();
+          if (err.contains('limit') || err.contains('blocked') || err.contains('rate')) {
+            limitHit = true;
+            limitMsg = (limitMsg == null) ? "Cricket API Limit Reached." : "$limitMsg & Cricket API Limit.";
+          } else {
+            setState(() => _error = (_error == null) ? "Cricket: $e" : "$_error\nCricket: $e");
+          }
+          return <MatchScore>[];
+        }),
       ]);
+
       if (mounted) {
-        setState(() {
-          _footballMatches = results[0];
-          _cricketMatches = results[1];
-          _isLoading = false;
-          _error = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        final errorStr = e.toString().toLowerCase();
-        if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
+        if (limitHit) {
           setState(() {
             _isMockMode = true;
             _footballMatches = _sportsService.getMockFootballMatches();
             _cricketMatches = _sportsService.getMockCricketMatches();
-            _error = "Free API Limit Exceeded. Showing Mock Data.";
+            _error = limitMsg ?? "API Limit Reached. Showing Mock Data.";
             _isLoading = false;
           });
         } else {
           setState(() {
-            if (!isBackgroundRefresh) _error = e.toString();
+            _footballMatches = results[0];
+            _cricketMatches = results[1];
             _isLoading = false;
           });
         }
+      }
+    } catch (e) {
+      // Internal error
+      if (mounted) {
+        setState(() {
+          if (!isBackgroundRefresh) _error = e.toString();
+          _isLoading = false;
+        });
       }
     }
   }
@@ -89,21 +111,32 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       return const Center(child: CircularProgressIndicator(color: Colors.red));
     }
 
-    if (_error != null && !_isMockMode) {
+    final bool hasData = _footballMatches.isNotEmpty || _cricketMatches.isNotEmpty;
+
+    if (_error != null && !_isMockMode && !hasData) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 48),
-            const SizedBox(height: 12),
-            Text('Failed to load scores', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _fetchScores,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 12),
+              Text('Failed to load scores', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _fetchScores,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -156,6 +189,24 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                 ],
               ),
             ),
+          if (_error != null && !_isMockMode)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: Colors.red.shade50,
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, size: 20, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: Colors.red.shade900, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           if (_cricketMatches.isNotEmpty) ...[
             _sectionHeader('🏏 Cricket Match Center'),
@@ -175,6 +226,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           if (_footballMatches.isNotEmpty) ...[
             _sectionHeader('⚽ Football Match Center'),
             SizedBox(
+              
               height: 180,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
