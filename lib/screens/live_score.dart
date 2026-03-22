@@ -50,70 +50,46 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     }
 
     try {
-      // Use separate try-catches for each fetch to allow partial success
-      List<MatchScore> football = [];
-      List<MatchScore> cricket = [];
-      String? footballError;
-      String? cricketError;
-
-      try {
-        football = await _sportsService.fetchFootballMatches();
-      } catch (e) {
-        footballError = e.toString();
-        print("Football fetch failed: $e");
-      }
-
-      try {
-        cricket = await _sportsService.fetchCricketMatches();
-      } catch (e) {
-        cricketError = e.toString();
-        print("Cricket fetch failed: $e");
-      }
-
+      final results = await Future.wait([
+        _sportsService.fetchFootballMatches(),
+        _sportsService.fetchCricketMatches(),
+      ]);
       if (mounted) {
         setState(() {
-          // Sorting: Live matches first
-          football.sort((a, b) => (b.isLive ? 1 : 0).compareTo(a.isLive ? 1 : 0));
-          cricket.sort((a, b) => (b.isLive ? 1 : 0).compareTo(a.isLive ? 1 : 0));
-
-          _footballMatches = football;
-          _cricketMatches = cricket;
+          _footballMatches = results[0];
+          _cricketMatches = results[1];
           _isLoading = false;
-
-          // If both failed, show error. If only one failed, we just show what we have.
-          if (footballError != null && cricketError != null) {
-            final errorStr = (footballError + cricketError).toLowerCase();
-            if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
-              _isMockMode = true;
-              _footballMatches = _sportsService.getMockFootballMatches();
-              _cricketMatches = _sportsService.getMockCricketMatches();
-              _error = "Free API Limit Exceeded. Showing Mock Data.";
-            } else {
-              _error = "Failed to load matches. Check connection.";
-            }
-          } else if (footballError != null || cricketError != null) {
-             // Partial error - maybe show a small snackbar or just ignore if we have some data
-             // For now, don't set _error so the UI shows the successful part
-          }
+          _error = null;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          if (!isBackgroundRefresh) _error = e.toString();
-          _isLoading = false;
-        });
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('429') || errorStr.contains('rate') || errorStr.contains('limit')) {
+          setState(() {
+            _isMockMode = true;
+            _footballMatches = _sportsService.getMockFootballMatches();
+            _cricketMatches = _sportsService.getMockCricketMatches();
+            _error = "Free API Limit Exceeded. Showing Mock Data.";
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            if (!isBackgroundRefresh) _error = e.toString();
+            _isLoading = false;
+          });
+        }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && _footballMatches.isEmpty && _cricketMatches.isEmpty) {
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: Colors.red));
     }
 
-    if (_error != null && !_isMockMode && _footballMatches.isEmpty && _cricketMatches.isEmpty) {
+    if (_error != null && !_isMockMode) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -134,7 +110,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
 
     final bool noData = _footballMatches.isEmpty && _cricketMatches.isEmpty;
 
-    if (noData && !_isLoading) {
+    if (noData) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -184,7 +160,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           if (_cricketMatches.isNotEmpty) ...[
             _sectionHeader('🏏 Cricket Match Center'),
             SizedBox(
-              height: 200,
+              height: 180,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -199,7 +175,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           if (_footballMatches.isNotEmpty) ...[
             _sectionHeader('⚽ Football Match Center'),
             SizedBox(
-              height: 200,
+              height: 180,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -209,7 +185,6 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
           ],
         ],
       ),
@@ -238,32 +213,26 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   }
 
   Widget _matchCard(MatchScore match) {
-    final title = (match.venue.isNotEmpty && match.venue != match.sport) ? match.venue : (match.matchType.isNotEmpty ? match.matchType : match.sport);
+    final title = match.venue.isNotEmpty ? match.venue : match.sport;
     final badgeColor = _getBadgeColor(match.matchType);
-    final statusColor = match.isLive ? Colors.red.shade700 : Colors.blue.shade700;
+    final statusColor = match.isLive ? Colors.red.shade600 : Colors.blue.shade600;
 
     return Container(
-      width: 310,
-      margin: const EdgeInsets.only(right: 12, bottom: 8),
+      width: 300,
+      margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Row
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Text(
@@ -271,26 +240,24 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
                 if (match.matchType.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: badgeColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: badgeColor.withOpacity(0.3)),
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       match.matchType,
-                      style: TextStyle(
-                        color: badgeColor,
-                        fontSize: 9,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -304,49 +271,54 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
-                _teamRow(
-                  match.teamA, 
-                  match.sport == 'football' ? match.score.split(' - ').first : (match.score.contains('vs') ? match.score.split(' vs ').first : match.score),
-                  match.teamALogo,
-                ),
-                const SizedBox(height: 12),
-                _teamRow(
-                  match.teamB, 
-                  match.sport == 'football' ? match.score.split(' - ').last : (match.score.contains('vs') ? match.score.split(' vs ').last : '-'),
-                  match.teamBLogo,
+                _teamRow(match.teamA, match.sport == 'football' ? match.score.split(' - ').first : (match.score.contains('vs') ? match.score.split(' vs ').first : match.score)),
+                const SizedBox(height: 8),
+                _teamRow(match.teamB, match.sport == 'football' ? match.score.split(' - ').last : (match.score.contains('vs') ? match.score.split(' vs ').last : '-')),
+              ],
+            ),
+          ),
+          
+          // Status line
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                if (match.isLive) _PulseDot(),
+                Expanded(
+                  child: Text(
+                    match.isLive ? 'Live · ${match.status}' : (match.date.isNotEmpty ? '${match.date} · ${match.status}' : match.status),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
           
           const Spacer(),
-
-          // Status line
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
+          
+          // Footer Actions
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
               ),
-              child: Row(
-                children: [
-                  if (match.isLive) _PulseDot(),
-                  Expanded(
-                    child: Text(
-                      match.isLive ? 'LIVE · ${match.status}' : (match.date.isNotEmpty ? '${match.date} · ${match.status}' : match.status),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: statusColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: const [
+                Text('POINTS TABLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                SizedBox(width: 16),
+                Text('SCHEDULE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ],
             ),
           ),
         ],
@@ -354,26 +326,22 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     );
   }
 
-  Widget _teamRow(String name, String score, String logoUrl) {
+  Widget _teamRow(String name, String score) {
     if (score == '-' || score == name) score = ''; 
 
     return Row(
       children: [
-        // Team Logo
+        // Placeholder Flag/Icon
         Container(
-          width: 32,
-          height: 32,
-          padding: const EdgeInsets.all(4),
+          width: 24,
+          height: 16,
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey.shade200),
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(2),
           ),
-          child: logoUrl.isNotEmpty 
-            ? ClipOval(child: Image.network(logoUrl, errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 16, color: Colors.grey)))
-            : const Icon(Icons.shield, size: 16, color: Colors.grey),
+          child: const Icon(Icons.flag, size: 12, color: Colors.grey),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             name,
@@ -381,21 +349,22 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         if (score.isNotEmpty)
-          Text(
-            score,
-            maxLines: 1,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              color: Colors.black,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 130),
+            child: Text(
+              score,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
       ],
@@ -413,7 +382,7 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
   }
   @override
   void dispose() {
@@ -423,11 +392,11 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+      opacity: _controller,
       child: Container(
-        width: 6,
-        height: 6,
-        margin: const EdgeInsets.only(right: 8),
+        width: 8,
+        height: 8,
+        margin: const EdgeInsets.only(right: 6),
         decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
       ),
     );
