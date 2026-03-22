@@ -171,42 +171,6 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 0),
         children: [
-          if (_isMockMode)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              color: Colors.orange.shade50,
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 20, color: Colors.orange),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _error ?? 'API Limit Reached. Showing Mock Data.',
-                      style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (_error != null && !_isMockMode)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              color: Colors.red.shade50,
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, size: 20, color: Colors.red),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: Colors.red.shade900, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           const SizedBox(height: 12),
           if (_cricketMatches.isNotEmpty) ...[
             _sectionHeader('🏏 Cricket Match Center'),
